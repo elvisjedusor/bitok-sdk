@@ -38,14 +38,11 @@
   gap: 16px;
 }
 
-@media (max-width: 500px) {
-  .row { grid-template-columns: 1fr; }
-}
-
 .protocolRow {
   display: flex;
   align-items: center;
   gap: 16px;
+  flex-wrap: wrap;
 }
 
 .labelText {
@@ -108,6 +105,7 @@
   display: flex;
   gap: 12px;
   justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .infoGrid {
@@ -164,6 +162,7 @@
   align-items: center;
   gap: 8px;
   text-align: right;
+  min-width: 0;
 }
 
 .eyeBtn {
@@ -203,4 +202,40 @@
   font-size: 14px;
   color: var(--color-error-400);
   font-weight: 500;
+}
+
+@media (max-width: 500px) {
+  .pageTitle {
+    font-size: 20px;
+  }
+
+  .row {
+    grid-template-columns: 1fr;
+  }
+
+  .infoRow {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .infoValue {
+    text-align: left;
+  }
+
+  .privKeyRow {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .privKeyValue {
+    text-align: left;
+  }
+
+  .actions {
+    justify-content: stretch;
+  }
+
+  .actions > * {
+    flex: 1;
+  }
 }

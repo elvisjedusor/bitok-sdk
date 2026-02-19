@@ -103,6 +103,8 @@
   font-size: 12px;
   font-family: var(--font-mono);
   transition: background-color 150ms ease, color 150ms ease;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .addressRow:hover {
@@ -112,6 +114,9 @@
 
 .addressText {
   letter-spacing: 0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .quickActions {
@@ -125,10 +130,6 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
-}
-
-@media (max-width: 640px) {
-  .statsGrid { grid-template-columns: repeat(2, 1fr); }
 }
 
 .statCard {
@@ -170,4 +171,44 @@
   font-size: 12px;
   color: var(--color-neutral-600);
   text-align: right;
+}
+
+@media (max-width: 640px) {
+  .pageHeader {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .pageTitle {
+    font-size: 20px;
+  }
+
+  .balanceNumber {
+    font-size: 32px;
+  }
+
+  .balancePlaceholder {
+    font-size: 32px;
+  }
+
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .statCard {
+    padding: 16px 12px;
+  }
+
+  .statValue {
+    font-size: 17px;
+  }
+
+  .quickActions {
+    width: 100%;
+  }
+
+  .quickActions > * {
+    flex: 1;
+  }
 }

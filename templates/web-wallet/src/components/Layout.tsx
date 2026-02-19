@@ -68,6 +68,19 @@ export function Layout({ children, activeView, onNavigate, connected }: LayoutPr
           {children}
         </div>
       </main>
+
+      <nav className={styles.bottomNav}>
+        {NAV_ITEMS.map(({ view, icon, label }) => (
+          <button
+            key={view}
+            className={`${styles.bottomNavItem} ${activeView === view ? styles.bottomNavItemActive : ''}`}
+            onClick={() => onNavigate(view)}
+          >
+            <span className={styles.navIcon}>{icon}</span>
+            <span className={styles.bottomNavLabel}>{label}</span>
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }

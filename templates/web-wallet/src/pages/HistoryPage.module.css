@@ -77,16 +77,14 @@
 .txRow {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
-  padding: 14px 0;
+  gap: 12px;
+  padding: 14px 4px;
   border-bottom: 1px solid var(--color-neutral-800);
   cursor: pointer;
   flex-wrap: wrap;
   transition: background-color 150ms ease;
   border-radius: var(--radius-sm);
   margin: 0 -4px;
-  padding-left: 4px;
-  padding-right: 4px;
 }
 
 .txRow:last-child {
@@ -130,10 +128,15 @@
   margin-top: 2px;
   font-size: 12px;
   color: var(--color-neutral-500);
+  flex-wrap: wrap;
 }
 
 .txid {
   font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
 }
 
 .txRight {
@@ -170,7 +173,7 @@
 .detail {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   font-size: 12px;
   align-items: flex-start;
 }
@@ -195,4 +198,32 @@
 .loadMore {
   display: flex;
   justify-content: center;
+}
+
+@media (max-width: 480px) {
+  .pageHeader {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .pageTitle {
+    font-size: 20px;
+  }
+
+  .txAmount {
+    font-size: 13px;
+  }
+
+  .txDate {
+    font-size: 11px;
+  }
+
+  .detail {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .detailValue {
+    text-align: left;
+  }
 }
