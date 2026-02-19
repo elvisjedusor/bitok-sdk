@@ -1,0 +1,92 @@
+{
+  "name": "bitok",
+  "version": "1.0.4",
+  "description": "Official TypeScript SDK for the Bitok cryptocurrency — build, test, and deploy transactions, scripts, and contracts",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js",
+      "types": "./dist/types/index.d.ts"
+    },
+    "./rpc": {
+      "import": "./dist/esm/rpc/index.js",
+      "require": "./dist/cjs/rpc/index.js",
+      "types": "./dist/types/rpc/index.d.ts"
+    },
+    "./script": {
+      "import": "./dist/esm/script/index.js",
+      "require": "./dist/cjs/script/index.js",
+      "types": "./dist/types/script/index.d.ts"
+    },
+    "./tx": {
+      "import": "./dist/esm/tx/index.js",
+      "require": "./dist/cjs/tx/index.js",
+      "types": "./dist/types/tx/index.d.ts"
+    },
+    "./wallet": {
+      "import": "./dist/esm/wallet/index.js",
+      "require": "./dist/cjs/wallet/index.js",
+      "types": "./dist/types/wallet/index.d.ts"
+    },
+    "./contract": {
+      "import": "./dist/esm/contract/index.js",
+      "require": "./dist/cjs/contract/index.js",
+      "types": "./dist/types/contract/index.d.ts"
+    },
+    "./mining": {
+      "import": "./dist/esm/mining/index.js",
+      "require": "./dist/cjs/mining/index.js",
+      "types": "./dist/types/mining/index.d.ts"
+    },
+    "./crypto": {
+      "import": "./dist/esm/crypto/index.js",
+      "require": "./dist/cjs/crypto/index.js",
+      "types": "./dist/types/crypto/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "npm run build:esm && npm run build:cjs && npm run build:types",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build:types": "tsc -p tsconfig.types.json",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "bitok",
+    "cryptocurrency",
+    "bitcoin",
+    "blockchain",
+    "sdk",
+    "yespower",
+    "script",
+    "transaction",
+    "wallet",
+    "rpc",
+    "p2pkh",
+    "multisig",
+    "hashlock",
+    "htlc"
+  ],
+  "author": "Bitok Developers",
+  "license": "MIT",
+  "dependencies": {
+    "@noble/curves": "^1.4.0",
+    "@noble/hashes": "^1.4.0",
+    "@scure/base": "^1.1.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
