@@ -204,7 +204,6 @@ These methods call the address indexer and will error if the node was not starte
 | `sendRawTransaction(hex)` | txid `string` |
 | `decodeScript(hex)` | `{ asm, hex, type, reqSigs?, addresses? }` |
 | `getMempool()` | `string[]` txids |
-| `listUnspent(minconf?, maxconf?)` | `UnspentOutput[]` |
 | `getTxOutProof(txid, blockHash?)` | proof hex |
 | `verifyTxOutProof(proof)` | `string[]` txids |
 
