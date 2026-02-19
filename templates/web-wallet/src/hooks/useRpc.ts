@@ -8,15 +8,12 @@ export function useRpc(settings: RpcSettings) {
   const [error, setError] = useState<string | null>(null);
 
   const makeClient = useCallback((s: RpcSettings) => {
-    const isLocal = s.host === '127.0.0.1' || s.host === 'localhost';
-    const url = isLocal ? '/rpc' : undefined;
     return new BitokRpc({
       host: s.host,
       port: s.port,
       user: s.user,
       password: s.password,
-      protocol: s.protocol,
-      url,
+      protocol: s.protocol
     });
   }, []);
 
