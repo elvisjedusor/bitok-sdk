@@ -1,0 +1,164 @@
+.root {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background-color: var(--color-neutral-900);
+  border-right: 1px solid var(--color-neutral-800);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px 24px;
+  border-bottom: 1px solid var(--color-neutral-800);
+  margin-bottom: 16px;
+}
+
+.brandIcon {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.brandName {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--color-neutral-0);
+  letter-spacing: -0.02em;
+}
+
+.brandSub {
+  font-size: 11px;
+  color: var(--color-neutral-500);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 12px;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: none;
+  border: none;
+  color: var(--color-neutral-400);
+  font-size: 14px;
+  font-weight: 500;
+  width: 100%;
+  text-align: left;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.navItem:hover {
+  background-color: var(--color-neutral-800);
+  color: var(--color-neutral-200);
+}
+
+.navItemActive {
+  background-color: var(--color-primary-900);
+  color: var(--color-primary-300);
+}
+
+.navItemActive:hover {
+  background-color: var(--color-primary-900);
+  color: var(--color-primary-300);
+}
+
+.navIcon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.navLabel {
+  font-size: 14px;
+}
+
+.statusBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 20px 0;
+  border-top: 1px solid var(--color-neutral-800);
+  margin-top: 8px;
+}
+
+.dotConnected {
+  color: var(--color-success-500);
+}
+
+.dotDisconnected {
+  color: var(--color-error-500);
+}
+
+.statusText {
+  font-size: 12px;
+  color: var(--color-neutral-500);
+}
+
+.main {
+  flex: 1;
+  overflow-y: auto;
+  background-color: var(--color-neutral-950);
+}
+
+.content {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 40px 32px;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 64px;
+  }
+
+  .brandName, .brandSub, .navLabel, .statusText {
+    display: none;
+  }
+
+  .brand {
+    justify-content: center;
+    padding: 0 12px 24px;
+  }
+
+  .nav {
+    padding: 0 8px;
+    align-items: center;
+  }
+
+  .navItem {
+    justify-content: center;
+    padding: 10px;
+  }
+
+  .statusBar {
+    justify-content: center;
+    padding: 16px 0 0;
+  }
+
+  .content {
+    padding: 24px 16px;
+  }
+}

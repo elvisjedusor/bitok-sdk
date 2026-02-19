@@ -1,0 +1,216 @@
+.root {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: radial-gradient(ellipse at top, var(--color-primary-900) 0%, var(--color-neutral-950) 60%);
+}
+
+.container {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.hero {
+  text-align: center;
+  padding-bottom: 8px;
+}
+
+.heroIcon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 16px;
+  display: block;
+  object-fit: contain;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-neutral-0);
+  letter-spacing: -0.03em;
+  margin-bottom: 10px;
+}
+
+.subtitle {
+  font-size: 15px;
+  color: var(--color-neutral-400);
+  line-height: 1.6;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.optionCard {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background-color: var(--color-neutral-900);
+  border: 1px solid var(--color-neutral-800);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: border-color 150ms ease, background-color 150ms ease;
+  text-align: left;
+  width: 100%;
+}
+
+.optionCard:hover {
+  border-color: var(--color-primary-600);
+  background-color: var(--color-neutral-800);
+}
+
+.optionIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-primary-900);
+  color: var(--color-primary-400);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.optionTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-neutral-100);
+  margin-bottom: 3px;
+}
+
+.optionDesc {
+  font-size: 13px;
+  color: var(--color-neutral-500);
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-neutral-500);
+  padding: 12px 16px;
+  background-color: var(--color-neutral-900);
+  border: 1px solid var(--color-neutral-800);
+  border-radius: var(--radius-md);
+}
+
+.stepTitle {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-neutral-0);
+  letter-spacing: -0.02em;
+}
+
+.stepDesc {
+  font-size: 14px;
+  color: var(--color-neutral-400);
+  line-height: 1.6;
+  margin-top: -8px;
+}
+
+.keyBox {
+  background-color: var(--color-neutral-900);
+  border: 1px solid var(--color-neutral-800);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.keyBoxHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.keyLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-neutral-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.keyValue {
+  color: var(--color-neutral-200);
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+.toggleBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--color-primary-400);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.toggleBtn:hover {
+  background-color: var(--color-neutral-800);
+}
+
+.warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-warning-500);
+  padding: 12px 16px;
+  background-color: var(--color-warning-50);
+  background-color: rgb(245 158 11 / 0.08);
+  border: 1px solid rgb(245 158 11 / 0.2);
+  border-radius: var(--radius-md);
+}
+
+.checkLabel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--color-neutral-300);
+  cursor: pointer;
+}
+
+.checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+  accent-color: var(--color-primary-500);
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.eyeBtn {
+  background: none;
+  border: none;
+  color: var(--color-neutral-500);
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  cursor: pointer;
+}
+
+.eyeBtn:hover {
+  color: var(--color-neutral-300);
+}

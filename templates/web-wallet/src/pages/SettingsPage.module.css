@@ -1,0 +1,206 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.pageHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pageTitle {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-neutral-0);
+  letter-spacing: -0.02em;
+}
+
+.pageSubtitle {
+  font-size: 13px;
+  color: var(--color-neutral-500);
+}
+
+.cardIcon {
+  color: var(--color-neutral-500);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 500px) {
+  .row { grid-template-columns: 1fr; }
+}
+
+.protocolRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.labelText {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-neutral-300);
+  min-width: 64px;
+}
+
+.toggleGroup {
+  display: flex;
+  background-color: var(--color-neutral-800);
+  border: 1px solid var(--color-neutral-700);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.toggleBtn {
+  padding: 7px 16px;
+  background: none;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-neutral-500);
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.toggleBtn:hover {
+  color: var(--color-neutral-300);
+}
+
+.toggleActive {
+  background-color: var(--color-primary-700);
+  color: white;
+}
+
+.testResult {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+}
+
+.testOk {
+  background: rgb(34 197 94 / 0.08);
+  border: 1px solid rgb(34 197 94 / 0.2);
+  color: var(--color-success-500);
+}
+
+.testFail {
+  background: rgb(239 68 68 / 0.08);
+  border: 1px solid rgb(239 68 68 / 0.2);
+  color: var(--color-error-500);
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.infoGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.infoRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  font-size: 13px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-neutral-800);
+}
+
+.infoRow:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.infoLabel {
+  color: var(--color-neutral-500);
+  font-weight: 500;
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
+.infoValue {
+  color: var(--color-neutral-300);
+  text-align: right;
+  word-break: break-all;
+  font-size: 13px;
+}
+
+.infoValueMono {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.privKeyRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-neutral-800);
+}
+
+.privKeyValue {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: right;
+}
+
+.eyeBtn {
+  background: none;
+  border: none;
+  color: var(--color-neutral-500);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.eyeBtn:hover {
+  color: var(--color-neutral-300);
+}
+
+.dangerSection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dangerText {
+  font-size: 14px;
+  color: var(--color-neutral-400);
+  line-height: 1.6;
+}
+
+.confirmRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.confirmText {
+  font-size: 14px;
+  color: var(--color-error-400);
+  font-weight: 500;
+}

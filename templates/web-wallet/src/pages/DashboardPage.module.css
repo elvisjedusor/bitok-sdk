@@ -1,0 +1,173 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.pageTitle {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-neutral-0);
+  letter-spacing: -0.02em;
+}
+
+.pageSubtitle {
+  font-size: 13px;
+  color: var(--color-neutral-500);
+  margin-top: 2px;
+}
+
+.errorBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background-color: rgb(239 68 68 / 0.08);
+  border: 1px solid rgb(239 68 68 / 0.25);
+  border-radius: var(--radius-md);
+  color: var(--color-error-500);
+  font-size: 13px;
+}
+
+.errorBanner div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.errorBanner strong {
+  font-weight: 600;
+}
+
+.balanceCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0 20px;
+  text-align: center;
+}
+
+.balanceLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-neutral-500);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+.balanceAmount {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.balanceNumber {
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--color-neutral-0);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.balanceCurrency {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-neutral-500);
+}
+
+.balancePlaceholder {
+  font-size: 40px;
+  font-weight: 300;
+  color: var(--color-neutral-700);
+}
+
+.addressRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--color-neutral-800);
+  border: 1px solid var(--color-neutral-700);
+  border-radius: var(--radius-full);
+  padding: 5px 12px;
+  cursor: pointer;
+  color: var(--color-neutral-400);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.addressRow:hover {
+  background-color: var(--color-neutral-700);
+  color: var(--color-neutral-200);
+}
+
+.addressText {
+  letter-spacing: 0.02em;
+}
+
+.quickActions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  padding-top: 4px;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .statsGrid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.statCard {
+  background-color: var(--color-neutral-900);
+  border: 1px solid var(--color-neutral-800);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.statIcon {
+  font-size: 20px;
+  margin-bottom: 2px;
+}
+
+.statValue {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-neutral-100);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.statLabel {
+  font-size: 12px;
+  color: var(--color-neutral-500);
+  font-weight: 500;
+}
+
+.status-ok { color: var(--color-success-500); }
+.status-warn { color: var(--color-warning-500); }
+.status-error { color: var(--color-error-500); }
+
+.lastRefresh {
+  font-size: 12px;
+  color: var(--color-neutral-600);
+  text-align: right;
+}

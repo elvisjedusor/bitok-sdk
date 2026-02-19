@@ -1,0 +1,34 @@
+export type WalletView = 'setup' | 'dashboard' | 'send' | 'receive' | 'history' | 'settings';
+
+export interface StoredWallet {
+  address: string;
+  publicKeyHex: string;
+  encryptedWIF?: string;
+  wif?: string;
+  label: string;
+  createdAt: number;
+}
+
+export interface RpcSettings {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  protocol: 'http' | 'https';
+}
+
+export interface AppState {
+  wallet: StoredWallet | null;
+  rpcSettings: RpcSettings;
+  connected: boolean;
+}
+
+export interface TxHistoryItem {
+  txid: string;
+  amount: number;
+  confirmations: number;
+  time: number;
+  category: 'send' | 'receive' | 'generate';
+  address: string;
+  fee?: number;
+}
