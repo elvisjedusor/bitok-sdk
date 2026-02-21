@@ -33,6 +33,7 @@ export function HistoryPage({ rpc, address }: HistoryPageProps) {
       const sorted = [...txids].reverse();
       setAllTxids(sorted);
       const items = await fetchPage(sorted.slice(0, PAGE_SIZE), address);
+      items.sort((a, b) => b.time - a.time);
       setTxs(items);
       setPage(1);
     } catch (err) {
@@ -49,6 +50,7 @@ export function HistoryPage({ rpc, address }: HistoryPageProps) {
     setLoading(true);
     try {
       const items = await fetchPage(slice, address);
+      items.sort((a, b) => b.time - a.time);
       setTxs(prev => [...prev, ...items]);
       setPage(p => p + 1);
     } catch (err) {
