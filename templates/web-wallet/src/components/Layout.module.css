@@ -1,8 +1,8 @@
 .root {
   display: flex;
-  min-height: 100vh;
+  height: 100%;
   width: 100%;
-  overflow-x: hidden;
+  overflow: hidden;
   position: relative;
 }
 
@@ -123,6 +123,7 @@
 .main {
   flex: 1;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   background-color: var(--color-neutral-950);
   min-width: 0;
 }
@@ -150,8 +151,12 @@
   .main {
     padding-bottom: 64px;
     overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     width: 100%;
     max-width: 100vw;
+    height: 100vh;
+    height: 100dvh;
   }
 
   .content {

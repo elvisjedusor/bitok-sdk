@@ -95,7 +95,7 @@ export function DashboardPage({ wallet, rpc, onNavigate }: DashboardPageProps) {
           <div className={styles.balanceAmount}>
             {info !== null ? (
               <>
-                <span className={styles.balanceNumber}>{info.balance.toFixed(8)}</span>
+                <span className={styles.balanceNumber}>{info.balance.toFixed(4)}</span>
                 <span className={styles.balanceCurrency}>BITOK</span>
               </>
             ) : (
@@ -171,9 +171,9 @@ function StatCard({ label, value, icon, status }: { label: string; value: string
 }
 
 function formatDifficulty(d: number): string {
-  if (d >= 1e12) return `${(d / 1e12).toFixed(2)}T`;
-  if (d >= 1e9) return `${(d / 1e9).toFixed(2)}G`;
-  if (d >= 1e6) return `${(d / 1e6).toFixed(2)}M`;
-  if (d >= 1e3) return `${(d / 1e3).toFixed(2)}K`;
-  return d.toFixed(4);
+  if (d >= 1e12) return `${(d / 1e12).toFixed(0)}T`;
+  if (d >= 1e9) return `${(d / 1e9).toFixed(0)}G`;
+  if (d >= 1e6) return `${(d / 1e6).toFixed(0)}M`;
+  if (d >= 1e3) return `${(d / 1e3).toFixed(0)}K`;
+  return d.toFixed(0);
 }

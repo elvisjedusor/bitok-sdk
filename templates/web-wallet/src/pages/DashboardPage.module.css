@@ -192,16 +192,24 @@
   }
 
   .statsGrid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
   }
 
   .statCard {
-    padding: 16px 12px;
+    padding: 10px 6px;
+  }
+
+  .statIcon {
+    font-size: 16px;
   }
 
   .statValue {
-    font-size: 17px;
+    font-size: 13px;
+  }
+
+  .statLabel {
+    font-size: 10px;
   }
 
   .quickActions {
