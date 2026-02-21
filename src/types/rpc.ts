@@ -69,6 +69,10 @@ export interface RawTransaction {
   locktime: number;
   vin: RawTxInput[];
   vout: RawTxOutput[];
+  blockhash?: string;
+  blockheight?: number;
+  blocktime?: number;
+  confirmations?: number;
 }
 
 export interface DecodedInput {

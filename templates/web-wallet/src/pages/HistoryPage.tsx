@@ -116,7 +116,7 @@ async function resolveItemWithRpc(rpc: BitokRpc, txid: string, walletAddress: st
 
   if (isCoinbase) {
     const amount = raw.vout.filter(o => o.address === walletAddress).reduce((s, o) => s + o.value, 0);
-    return { txid, amount, confirmations: 0, time: 0, category: 'generate', address: walletAddress };
+    return { txid, amount, confirmations: raw.confirmations ?? 0, time: raw.blocktime ?? 0, category: 'generate', address: walletAddress };
   }
 
   const prevTxs = await Promise.all(
@@ -137,10 +137,10 @@ async function resolveItemWithRpc(rpc: BitokRpc, txid: string, walletAddress: st
   const receivedAmount = raw.vout.filter(o => o.address === walletAddress).reduce((s, o) => s + o.value, 0);
 
   if (isSend) {
-    return { txid, amount: sentToOthers, confirmations: 0, time: 0, category: 'send', address: walletAddress };
+    return { txid, amount: sentToOthers, confirmations: raw.confirmations ?? 0, time: raw.blocktime ?? 0, category: 'send', address: walletAddress };
   }
 
-  return { txid, amount: receivedAmount, confirmations: 0, time: 0, category: 'receive', address: walletAddress };
+  return { txid, amount: receivedAmount, confirmations: raw.confirmations ?? 0, time: raw.blocktime ?? 0, category: 'receive', address: walletAddress };
 }
 
 function TxRow({ tx }: { tx: TxHistoryItem }) {
