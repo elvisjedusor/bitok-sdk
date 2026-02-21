@@ -21,6 +21,11 @@ export class ScriptBuilder {
     return this;
   }
 
+  pushBytesUnchecked(data: Uint8Array): this {
+    this.chunks.push(encodeMinimalPush(data));
+    return this;
+  }
+
   pushHex(hex: string): this {
     return this.pushBytes(hexToBytes(hex));
   }
@@ -94,7 +99,9 @@ export class ScriptBuilder {
 
   static opReturn(data?: Uint8Array): Uint8Array {
     const b = new ScriptBuilder().op(Opcode.OP_RETURN);
-    if (data && data.length > 0) b.pushBytes(data);
+    if (data && data.length > 0) {
+      b.pushBytesUnchecked(data);
+    }
     return b.build();
   }
 

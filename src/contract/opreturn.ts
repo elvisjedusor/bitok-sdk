@@ -4,9 +4,10 @@ import { MAX_SCRIPT_SIZE } from '../types/constants';
 
 /**
  * Maximum bytes of arbitrary data that can fit in an OP_RETURN output.
- * Subtracts the OP_RETURN opcode (1 byte) and the push data prefix (up to 5 bytes).
+ * OP_RETURN outputs are unspendable so the 520-byte per-push limit does not apply.
+ * 1 byte OP_RETURN + 5 bytes OP_PUSHDATA4 prefix + N data bytes <= 10000
  */
-const MAX_OPRETURN_DATA = MAX_SCRIPT_SIZE - 6;
+const MAX_OPRETURN_DATA = MAX_SCRIPT_SIZE - 1 - 5;
 
 /**
  * Represents an OP_RETURN output — an unspendable output used to store
@@ -93,14 +94,45 @@ export function embedJSON(obj: unknown): OpReturnData {
  * @param scriptHex - The full scriptPubKey hex of a suspected OP_RETURN output.
  * @returns Parsed OpReturnData, or null if the script is not OP_RETURN.
  */
+function readPush(bytes: Uint8Array, offset: number): { data: Uint8Array; next: number } | null {
+  if (offset >= bytes.length) return null;
+  const lenByte = bytes[offset];
+  if (lenByte === 0x00) {
+    return { data: new Uint8Array(0), next: offset + 1 };
+  }
+  if (lenByte >= 0x01 && lenByte <= 0x4b) {
+    const end = offset + 1 + lenByte;
+    if (end > bytes.length) return null;
+    return { data: bytes.slice(offset + 1, end), next: end };
+  }
+  if (lenByte === 0x4c) {
+    if (offset + 2 > bytes.length) return null;
+    const len = bytes[offset + 1];
+    const end = offset + 2 + len;
+    if (end > bytes.length) return null;
+    return { data: bytes.slice(offset + 2, end), next: end };
+  }
+  if (lenByte === 0x4d) {
+    if (offset + 3 > bytes.length) return null;
+    const len = (bytes[offset + 1]) | (bytes[offset + 2] << 8);
+    const end = offset + 3 + len;
+    if (end > bytes.length) return null;
+    return { data: bytes.slice(offset + 3, end), next: end };
+  }
+  if (lenByte === 0x4e) {
+    if (offset + 5 > bytes.length) return null;
+    const len = (bytes[offset + 1]) | (bytes[offset + 2] << 8) | (bytes[offset + 3] << 16) | (bytes[offset + 4] << 24);
+    const end = offset + 5 + len;
+    if (end > bytes.length) return null;
+    return { data: bytes.slice(offset + 5, end), next: end };
+  }
+  return null;
+}
+
 export function decodeOpReturn(scriptHex: string): OpReturnData | null {
   const bytes = hexToBytes(scriptHex);
   if (bytes.length < 1 || bytes[0] !== 0x6a) return null;
 
-  let dataStart = 1;
-  let dataLen = 0;
-
-  // OP_RETURN with no data payload
   if (bytes.length === 1) {
     return {
       scriptPubKeyHex: scriptHex,
@@ -110,40 +142,43 @@ export function decodeOpReturn(scriptHex: string): OpReturnData | null {
     };
   }
 
-  // Parse the push data prefix to find where the payload starts and how long it is
-  const lenByte = bytes[1];
-  if (lenByte < 0x4c) {
-    // Direct length: byte value is the data length
-    dataLen = lenByte;
-    dataStart = 2;
-  } else if (lenByte === 0x4c) {
-    // OP_PUSHDATA1: next 1 byte is the length
-    dataLen = bytes[2] ?? 0;
-    dataStart = 3;
-  } else if (lenByte === 0x4d) {
-    // OP_PUSHDATA2: next 2 bytes (little-endian) are the length
-    dataLen = (bytes[2] ?? 0) | ((bytes[3] ?? 0) << 8);
-    dataStart = 4;
-  } else if (lenByte === 0x4e) {
-    // OP_PUSHDATA4: next 4 bytes (little-endian) are the length
-    dataLen = (bytes[2] ?? 0) | ((bytes[3] ?? 0) << 8) | ((bytes[4] ?? 0) << 16) | ((bytes[5] ?? 0) << 24);
-    dataStart = 6;
-  } else {
-    return null;
+  const chunks: Uint8Array[] = [];
+  let pos = 1;
+  while (pos < bytes.length) {
+    const push = readPush(bytes, pos);
+    if (!push) break;
+    chunks.push(push.data);
+    pos = push.next;
   }
 
-  const data = bytes.slice(dataStart, dataStart + dataLen);
+  if (chunks.length === 0) {
+    return {
+      scriptPubKeyHex: scriptHex,
+      dataHex: '',
+      dataText: '',
+      byteSize: 0,
+    };
+  }
+
+  const totalLen = chunks.reduce((s, c) => s + c.length, 0);
+  const combined = new Uint8Array(totalLen);
+  let offset = 0;
+  for (const chunk of chunks) {
+    combined.set(chunk, offset);
+    offset += chunk.length;
+  }
+
   let dataText: string | undefined;
   try {
-    dataText = new TextDecoder('utf-8', { fatal: true }).decode(data);
+    dataText = new TextDecoder('utf-8', { fatal: true }).decode(combined);
   } catch {
     dataText = undefined;
   }
 
   return {
     scriptPubKeyHex: scriptHex,
-    dataHex: bytesToHex(data),
+    dataHex: bytesToHex(combined),
     dataText,
-    byteSize: data.length,
+    byteSize: combined.length,
   };
 }
