@@ -100,7 +100,16 @@ export class ScriptBuilder {
   static opReturn(data?: Uint8Array): Uint8Array {
     const b = new ScriptBuilder().op(Opcode.OP_RETURN);
     if (data && data.length > 0) {
-      b.pushBytesUnchecked(data);
+      if (data.length <= MAX_SCRIPT_ELEMENT_SIZE) {
+        b.pushBytesUnchecked(data);
+      } else {
+        let offset = 0;
+        while (offset < data.length) {
+          const end = Math.min(offset + MAX_SCRIPT_ELEMENT_SIZE, data.length);
+          b.pushBytesUnchecked(data.slice(offset, end));
+          offset = end;
+        }
+      }
     }
     return b.build();
   }

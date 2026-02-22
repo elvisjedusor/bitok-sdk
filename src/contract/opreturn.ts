@@ -1,13 +1,13 @@
 import { ScriptBuilder } from '../script/builder';
 import { bytesToHex, hexToBytes } from '../utils/bytes';
-import { MAX_SCRIPT_SIZE } from '../types/constants';
+import { MAX_SCRIPT_SIZE, MAX_SCRIPT_ELEMENT_SIZE } from '../types/constants';
 
-/**
- * Maximum bytes of arbitrary data that can fit in an OP_RETURN output.
- * OP_RETURN outputs are unspendable so the 520-byte per-push limit does not apply.
- * 1 byte OP_RETURN + 5 bytes OP_PUSHDATA4 prefix + N data bytes <= 10000
- */
-const MAX_OPRETURN_DATA = MAX_SCRIPT_SIZE - 1 - 5;
+const CHUNK_WIRE_SIZE = MAX_SCRIPT_ELEMENT_SIZE + 3;
+const AVAILABLE = MAX_SCRIPT_SIZE - 1;
+const FULL_CHUNKS = Math.floor(AVAILABLE / CHUNK_WIRE_SIZE);
+const REMAINING_WIRE = AVAILABLE - FULL_CHUNKS * CHUNK_WIRE_SIZE;
+const REMAINING_DATA = REMAINING_WIRE <= 1 ? 0 : REMAINING_WIRE <= 76 ? REMAINING_WIRE - 1 : REMAINING_WIRE <= 257 ? REMAINING_WIRE - 2 : REMAINING_WIRE - 3;
+const MAX_OPRETURN_DATA = FULL_CHUNKS * MAX_SCRIPT_ELEMENT_SIZE + REMAINING_DATA;
 
 /**
  * Represents an OP_RETURN output — an unspendable output used to store
