@@ -65,10 +65,10 @@ export function ReceivePage({ wallet }: ReceivePageProps) {
             </div>
 
             <div className={styles.infoGrid}>
-              <div className={styles.infoItem}>
+              {/* <div className={styles.infoItem}>
                 <div className={styles.infoLabel}>Public Key</div>
                 <div className={styles.infoValue}>{wallet.publicKeyHex.slice(0, 20)}...</div>
-              </div>
+              </div> */}
               <div className={styles.infoItem}>
                 <div className={styles.infoLabel}>Label</div>
                 <div className={styles.infoValue}>{wallet.label}</div>
