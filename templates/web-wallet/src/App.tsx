@@ -7,6 +7,10 @@ import { SendPage } from './pages/SendPage';
 import { ReceivePage } from './pages/ReceivePage';
 import { HistoryPage } from './pages/HistoryPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { EscrowPage } from './pages/escrow/EscrowPage';
+import { ContractsPage } from './pages/contracts/ContractsPage';
+import { MyContractsPage } from './pages/contracts/MyContractsPage';
+import type { ContractAction } from './pages/contracts/MyContractsTab';
 import type { WalletView, StoredWallet, RpcSettings } from './types/wallet';
 import {
   loadWallet,
@@ -14,6 +18,8 @@ import {
   removeWallet,
   loadRpcSettings,
   saveRpcSettings,
+  loadDevMode,
+  saveDevMode,
 } from './store/walletStore';
 
 export default function App() {
@@ -21,6 +27,8 @@ export default function App() {
   const [rpcSettings, setRpcSettings] = useState<RpcSettings>(loadRpcSettings);
   const [view, setView] = useState<WalletView>(wallet ? 'dashboard' : 'setup');
   const [connected, setConnected] = useState(false);
+  const [devMode, setDevMode] = useState(loadDevMode);
+  const [pendingContractAction, setPendingContractAction] = useState<ContractAction | null>(null);
 
   const rpc = useMemo(() => {
     return new BitokRpc({ ...rpcSettings, timeout: 5000 });
@@ -50,6 +58,14 @@ export default function App() {
     setConnected(false);
   }
 
+  function handleDevModeToggle(enabled: boolean) {
+    saveDevMode(enabled);
+    setDevMode(enabled);
+    if (!enabled && ['contracts', 'my-contracts', 'script-builder', 'script-debugger', 'tx-builder', 'decode', 'explorer'].includes(view)) {
+      setView('dashboard');
+    }
+  }
+
   if (!wallet) {
     return <SetupPage onWalletCreated={handleWalletCreated} />;
   }
@@ -60,6 +76,7 @@ export default function App() {
       onNavigate={setView}
       connected={connected}
       address={wallet.address}
+      devMode={devMode}
     >
       {view === 'dashboard' && (
         <DashboardPage
@@ -69,10 +86,16 @@ export default function App() {
         />
       )}
       {view === 'send' && (
-        <SendPage wallet={wallet} rpc={rpc} />
+        <SendPage
+          wallet={wallet}
+          rpc={rpc}
+        />
       )}
       {view === 'receive' && (
         <ReceivePage wallet={wallet} />
+      )}
+      {view === 'escrow' && (
+        <EscrowPage wallet={wallet} rpc={rpc} />
       )}
       {view === 'history' && (
         <HistoryPage rpc={rpc} address={wallet.address} />
@@ -83,6 +106,26 @@ export default function App() {
           rpcSettings={rpcSettings}
           onRpcUpdate={handleRpcUpdate}
           onForgetWallet={handleForgetWallet}
+          devMode={devMode}
+          onDevModeToggle={handleDevModeToggle}
+        />
+      )}
+      {view === 'contracts' && (
+        <ContractsPage
+          wallet={wallet}
+          rpc={rpc}
+          pendingAction={pendingContractAction}
+          onActionConsumed={() => setPendingContractAction(null)}
+        />
+      )}
+      {view === 'my-contracts' && (
+        <MyContractsPage
+          rpc={rpc}
+          address={wallet.address}
+          onNavigate={(v, action) => {
+            if (action) setPendingContractAction(action);
+            setView(v);
+          }}
         />
       )}
     </Layout>

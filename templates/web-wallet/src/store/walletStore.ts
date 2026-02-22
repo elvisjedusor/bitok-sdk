@@ -2,6 +2,7 @@ import type { StoredWallet, RpcSettings } from '../types/wallet';
 
 const WALLET_KEY = 'bitok_wallet';
 const RPC_KEY = 'bitok_rpc';
+const DEVMODE_KEY = 'bitok_devmode';
 
 const DEFAULT_RPC: RpcSettings = {
   host: import.meta.env.VITE_RPC_HOST || '127.0.0.1',
@@ -39,6 +40,18 @@ export function loadRpcSettings(): RpcSettings {
 
 export function saveRpcSettings(settings: RpcSettings): void {
   localStorage.setItem(RPC_KEY, JSON.stringify(settings));
+}
+
+export function loadDevMode(): boolean {
+  try {
+    return localStorage.getItem(DEVMODE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function saveDevMode(enabled: boolean): void {
+  localStorage.setItem(DEVMODE_KEY, enabled ? 'true' : 'false');
 }
 
 export { DEFAULT_RPC };

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { BitokRpc } from 'bitok';
-import { Server, Shield, Trash2, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-react';
+import { Server, Shield, Trash2, CheckCircle, XCircle, Eye, EyeOff, Code2, Copy, Check } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
@@ -12,16 +12,19 @@ interface SettingsPageProps {
   rpcSettings: RpcSettings;
   onRpcUpdate: (settings: RpcSettings) => void;
   onForgetWallet: () => void;
+  devMode: boolean;
+  onDevModeToggle: (enabled: boolean) => void;
 }
 
 type TestState = 'idle' | 'testing' | 'ok' | 'fail';
 
-export function SettingsPage({ wallet, rpcSettings, onRpcUpdate, onForgetWallet }: SettingsPageProps) {
+export function SettingsPage({ wallet, rpcSettings, onRpcUpdate, onForgetWallet, devMode, onDevModeToggle }: SettingsPageProps) {
   const [rpc, setRpc] = useState<RpcSettings>({ ...rpcSettings });
   const [testState, setTestState] = useState<TestState>('idle');
   const [testError, setTestError] = useState('');
   const [showPrivKey, setShowPrivKey] = useState(false);
   const [confirmForget, setConfirmForget] = useState(false);
+  const [copiedField, setCopiedField] = useState('');
 
   function handleRpcChange(field: keyof RpcSettings, value: string | number) {
     setRpc(prev => ({ ...prev, [field]: value }));
@@ -121,22 +124,46 @@ export function SettingsPage({ wallet, rpcSettings, onRpcUpdate, onForgetWallet 
       <Card title="Wallet Info" subtitle="Your address and key details" action={<Shield size={18} className={styles.cardIcon} />}>
         <div className={styles.infoGrid}>
           <InfoRow label="Label" value={wallet.label} />
-          <InfoRow label="Address" value={wallet.address} mono />
-          <InfoRow label="Public Key" value={`${wallet.publicKeyHex.slice(0, 32)}...`} mono />
+          <InfoRow label="Address" value={wallet.address} mono copyable copiedField={copiedField} onCopy={setCopiedField} />
+          <InfoRow label="Public Key" value={wallet.publicKeyHex} mono copyable copiedField={copiedField} onCopy={setCopiedField} />
           {wallet.wif && (
             <div className={styles.privKeyRow}>
               <span className={styles.infoLabel}>Private Key (WIF)</span>
               <div className={styles.privKeyValue}>
                 <span className={styles.infoValueMono}>
-                  {showPrivKey ? wallet.wif : '•'.repeat(52)}
+                  {showPrivKey ? wallet.wif : '\u2022'.repeat(52)}
                 </span>
                 <button className={styles.eyeBtn} onClick={() => setShowPrivKey(!showPrivKey)}>
                   {showPrivKey ? <EyeOff size={13} /> : <Eye size={13} />}
                 </button>
+                {showPrivKey && wallet.wif && (
+                  <CopyButton value={wallet.wif} field="wif" copiedField={copiedField} onCopy={setCopiedField} />
+                )}
               </div>
             </div>
           )}
           <InfoRow label="Created" value={new Date(wallet.createdAt).toLocaleString()} />
+        </div>
+      </Card>
+
+      <Card title="Developer Mode" subtitle="Access advanced scripting and contract tools" action={<Code2 size={18} className={styles.cardIcon} />}>
+        <div className={styles.devModeSection}>
+          <div className={styles.devModeRow}>
+            <div className={styles.devModeInfo}>
+              <span className={styles.devModeLabel}>Enable Developer Tools</span>
+              <span className={styles.devModeDesc}>
+                Adds Script Developing tools.
+              </span>
+            </div>
+            <button
+              className={`${styles.devToggle} ${devMode ? styles.devToggleOn : ''}`}
+              onClick={() => onDevModeToggle(!devMode)}
+              role="switch"
+              aria-checked={devMode}
+            >
+              <span className={styles.devToggleThumb} />
+            </button>
+          </div>
         </div>
       </Card>
 
@@ -163,11 +190,30 @@ export function SettingsPage({ wallet, rpcSettings, onRpcUpdate, onForgetWallet 
   );
 }
 
-function InfoRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function CopyButton({ value, field, copiedField, onCopy }: { value: string; field: string; copiedField: string; onCopy: (f: string) => void }) {
+  const copied = copiedField === field;
+  async function handleCopy() {
+    await navigator.clipboard.writeText(value);
+    onCopy(field);
+    setTimeout(() => onCopy(''), 2000);
+  }
+  return (
+    <button className={`${styles.copyBtn} ${copied ? styles.copiedBtn : ''}`} onClick={handleCopy}>
+      {copied ? <Check size={12} /> : <Copy size={12} />}
+    </button>
+  );
+}
+
+function InfoRow({ label, value, mono, copyable, copiedField, onCopy }: { label: string; value: string; mono?: boolean; copyable?: boolean; copiedField?: string; onCopy?: (f: string) => void }) {
   return (
     <div className={styles.infoRow}>
       <span className={styles.infoLabel}>{label}</span>
-      <span className={`${styles.infoValue} ${mono ? styles.infoValueMono : ''}`}>{value}</span>
+      <div className={styles.infoValueRow}>
+        <span className={`${styles.infoValue} ${mono ? styles.infoValueMono : ''}`}>{value}</span>
+        {copyable && onCopy && copiedField !== undefined && (
+          <CopyButton value={value} field={label} copiedField={copiedField} onCopy={onCopy} />
+        )}
+      </div>
     </div>
   );
 }

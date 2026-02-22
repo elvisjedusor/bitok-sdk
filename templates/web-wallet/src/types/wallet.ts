@@ -1,4 +1,18 @@
-export type WalletView = 'setup' | 'dashboard' | 'send' | 'receive' | 'history' | 'settings';
+export type WalletView =
+  | 'setup'
+  | 'dashboard'
+  | 'send'
+  | 'receive'
+  | 'escrow'
+  | 'history'
+  | 'settings'
+  | 'contracts'
+  | 'my-contracts'
+  | 'script-builder'
+  | 'script-debugger'
+  | 'tx-builder'
+  | 'decode'
+  | 'explorer';
 
 export interface StoredWallet {
   address: string;

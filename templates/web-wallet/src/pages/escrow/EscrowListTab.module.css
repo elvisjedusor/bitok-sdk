@@ -1,0 +1,464 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-neutral-200);
+}
+
+.subtitle {
+  font-size: 12px;
+  color: var(--color-neutral-500);
+  margin-top: 2px;
+}
+
+.errorBanner {
+  padding: 10px 14px;
+  background: rgb(239 68 68 / 0.08);
+  border: 1px solid rgb(239 68 68 / 0.25);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--color-error-500);
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--color-neutral-500);
+  font-size: 13px;
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--color-neutral-700);
+  border-top-color: var(--color-accent-500);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.progressBar {
+  width: 200px;
+  height: 3px;
+  background: var(--color-neutral-800);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--color-accent-500);
+  border-radius: 2px;
+  transition: width 300ms ease;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.emptyTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-neutral-400);
+}
+
+.emptyDesc {
+  font-size: 12px;
+  color: var(--color-neutral-600);
+  max-width: 340px;
+  line-height: 1.6;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.escrowRow {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: background-color 150ms ease;
+}
+
+.escrowRow:hover {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.escrowHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 8px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-neutral-800);
+  transition: background-color 150ms ease;
+}
+
+.escrowHeader:hover {
+  background-color: var(--color-neutral-800);
+}
+
+.escrowIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-neutral-800);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--color-accent-500);
+}
+
+.escrowMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.escrowTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-neutral-200);
+}
+
+.roleBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  background-color: rgba(6, 182, 212, 0.1);
+  border: 1px solid rgba(6, 182, 212, 0.2);
+  color: var(--color-accent-500);
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.03em;
+}
+
+.escrowSub {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--color-neutral-500);
+  flex-wrap: wrap;
+}
+
+.txidShort {
+  font-family: var(--font-mono);
+}
+
+.dot {
+  color: var(--color-neutral-700);
+}
+
+.escrowRight {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.escrowAmount {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-neutral-200);
+  font-variant-numeric: tabular-nums;
+}
+
+.escrowDate {
+  font-size: 11px;
+  color: var(--color-neutral-500);
+  margin-top: 2px;
+}
+
+.expandIcon {
+  color: var(--color-neutral-600);
+  flex-shrink: 0;
+}
+
+.escrowDetails {
+  background-color: var(--color-neutral-900);
+  border: 1px solid var(--color-neutral-800);
+  border-top: none;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  align-items: flex-start;
+}
+
+.detailLabel {
+  color: var(--color-neutral-500);
+  font-weight: 500;
+  flex-shrink: 0;
+  min-width: 100px;
+}
+
+.detailValueWrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.detailValue {
+  color: var(--color-neutral-300);
+  text-align: right;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.partiesSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background-color: var(--color-neutral-950);
+  border: 1px solid var(--color-neutral-800);
+  border-radius: var(--radius-md);
+}
+
+.partiesLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-accent-500);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.partyRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--color-neutral-800);
+}
+
+.partyRow:last-child {
+  border-bottom: none;
+}
+
+.partyLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-neutral-600);
+  min-width: 64px;
+}
+
+.partyAddr {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-neutral-300);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.youBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  background-color: rgba(6, 182, 212, 0.12);
+  border: 1px solid rgba(6, 182, 212, 0.25);
+  color: var(--color-accent-500);
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.contractSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-neutral-800);
+}
+
+.contractLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-accent-500);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.contractBox {
+  background-color: var(--color-neutral-950);
+  border: 1px solid var(--color-neutral-800);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-neutral-400);
+  word-break: break-all;
+  line-height: 1.6;
+  max-height: 80px;
+  overflow-y: auto;
+}
+
+.copyBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  background: none;
+  border: 1px solid var(--color-neutral-700);
+  border-radius: var(--radius-sm);
+  color: var(--color-neutral-500);
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: color 150ms ease, border-color 150ms ease;
+}
+
+.copyBtn:hover {
+  color: var(--color-neutral-300);
+  border-color: var(--color-neutral-500);
+}
+
+.copiedBtn {
+  color: var(--color-success-500);
+  border-color: var(--color-success-500);
+}
+
+.detailActions {
+  padding-top: 8px;
+  border-top: 1px solid var(--color-neutral-800);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: rgba(6, 182, 212, 0.08);
+  border: 1px solid rgba(6, 182, 212, 0.25);
+  border-radius: var(--radius-md);
+  color: var(--color-accent-500);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.actionBtn:hover {
+  background: rgba(6, 182, 212, 0.15);
+  border-color: rgba(6, 182, 212, 0.45);
+  color: var(--color-neutral-0);
+}
+
+.escrowRowSpent {
+  opacity: 0.55;
+}
+
+.spentBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: var(--color-error-500);
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.03em;
+}
+
+.spentNotice {
+  font-size: 12px;
+  color: var(--color-neutral-500);
+  padding: 8px 12px;
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  border-radius: var(--radius-sm);
+  line-height: 1.5;
+}
+
+@media (max-width: 600px) {
+  .header {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .escrowHeader {
+    gap: 8px;
+    padding: 10px 4px;
+  }
+
+  .escrowAmount {
+    font-size: 12px;
+  }
+
+  .detailRow {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .detailValueWrap {
+    justify-content: flex-start;
+  }
+
+  .detailValue {
+    text-align: left;
+  }
+
+  .detailLabel {
+    min-width: unset;
+  }
+
+  .partyRow {
+    flex-wrap: wrap;
+  }
+}
