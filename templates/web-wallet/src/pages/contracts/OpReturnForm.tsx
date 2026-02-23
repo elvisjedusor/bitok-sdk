@@ -13,6 +13,7 @@ type InputMode = 'text' | 'hex' | 'json' | 'decode';
 type Step = 'create' | 'fund' | 'success';
 
 const MAX_DATA_BYTES = 9941;
+const CENT = 1_000_000;
 
 interface OpReturnFormProps {
   wallet: StoredWallet;
@@ -29,6 +30,16 @@ function getByteSize(input: string, mode: InputMode): number {
     return Math.ceil(clean.length / 2);
   }
   return 0;
+}
+
+function computeMinFee(scriptHexLen: number): string {
+  const scriptBytes = scriptHexLen / 2;
+  const scriptOutSize = 8 + (scriptBytes < 253 ? 1 : 3) + scriptBytes;
+  const estSize = 10 + 180 + scriptOutSize + 34;
+  const feeUnits = Math.ceil(estSize / 1000);
+  const satoshis = feeUnits * CENT;
+  const minSatoshis = Math.max(satoshis, CENT);
+  return (minSatoshis / 1e8).toFixed(8).replace(/0+$/, '').replace(/\.$/, '');
 }
 
 export function OpReturnForm({ wallet, rpc }: OpReturnFormProps) {
@@ -78,7 +89,8 @@ export function OpReturnForm({ wallet, rpc }: OpReturnFormProps) {
           break;
       }
       setResult(data);
-      if (mode !== 'decode') {
+      if (mode !== 'decode' && data) {
+        setFee(computeMinFee(data.scriptPubKeyHex.length));
         setStep('fund');
       }
     } catch (err) {
@@ -274,6 +286,7 @@ export function OpReturnForm({ wallet, rpc }: OpReturnFormProps) {
               min="0"
               step="0.001"
               suffix={<span>BITOK</span>}
+              hint={`Min: ${computeMinFee(result.scriptPubKeyHex.length)} BITOK (auto-raised if too low)`}
             />
           </div>
         </>

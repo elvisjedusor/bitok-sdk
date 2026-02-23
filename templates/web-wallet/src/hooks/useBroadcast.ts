@@ -53,10 +53,10 @@ export function useBroadcast(wallet: StoredWallet, rpc: BitokRpc) {
         const change = totalIn - amountSatoshis - feeSatoshis;
 
         const builder = new TransactionBuilder();
-        builder.addCustomOutput(scriptHex, amountSatoshis);
         for (const utxo of selected) {
           builder.addInput(utxo.txid, utxo.vout);
         }
+        builder.addCustomOutput(scriptHex, amountSatoshis);
         if (change > 0n) {
           builder.addOutputToAddress(wallet.address, change);
         }
@@ -101,17 +101,31 @@ export function useBroadcast(wallet: StoredWallet, rpc: BitokRpc) {
       if (!wallet.wif) throw new Error('Private key not available');
       setState({ broadcasting: true, txid: null, error: null });
       try {
-        const feeSatoshis = bitokToSatoshis(feeBitok);
+        const CENT = 1_000_000n;
+        const userFee = bitokToSatoshis(feeBitok);
         const utxos = await rpc.getAddressUtxos(wallet.address);
+
+        const scriptBytes = hexToBytes(scriptHex);
+        const scriptOutSize = 8 + (scriptBytes.length < 253 ? 1 : 3) + scriptBytes.length;
+        const inputSize = 180;
+        const changeOutSize = 34;
+        const overhead = 10;
+
+        const probe = selectUTXOs(utxos, 0n, userFee > 0n ? userFee : CENT);
+        const estSize = overhead + probe.length * inputSize + scriptOutSize + changeOutSize;
+        const sizeFee = BigInt(Math.ceil(estSize / 1000)) * CENT;
+        const minFee = sizeFee > CENT ? sizeFee : CENT;
+        const feeSatoshis = userFee >= minFee ? userFee : minFee;
+
         const selected = selectUTXOs(utxos, 0n, feeSatoshis);
         const totalIn = selected.reduce((acc: bigint, u: UTXO) => acc + u.valueSatoshis, 0n);
         const change = totalIn - feeSatoshis;
 
         const builder = new TransactionBuilder();
-        builder.addCustomOutput(scriptHex, 0n);
         for (const utxo of selected) {
           builder.addInput(utxo.txid, utxo.vout);
         }
+        builder.addCustomOutput(scriptHex, 0n);
         if (change > 0n) {
           builder.addOutputToAddress(wallet.address, change);
         }
@@ -128,7 +142,13 @@ export function useBroadcast(wallet: StoredWallet, rpc: BitokRpc) {
         let txid: string;
         try {
           const signed = signTransaction(tx, [privKey], { prevTxs });
-          if (!signed.complete) throw new Error('Signing failed');
+          if (!signed.complete) {
+            const errors = signed.inputs
+              .filter((inp) => !inp.complete)
+              .map((inp) => inp.error)
+              .join('; ');
+            throw new Error(`Signing failed: ${errors}`);
+          }
           txid = await rpc.sendRawTransaction(signed.hex);
         } finally {
           privKey.fill(0);
