@@ -1,6 +1,6 @@
 {
   "name": "bitok",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Official TypeScript SDK for the Bitok cryptocurrency — build, test, and deploy transactions, scripts, and contracts",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",

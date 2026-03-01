@@ -73,6 +73,7 @@ bitokoind -daemon -server -rpcuser=myuser -rpcpassword=mypassword -indexer -cors
   - [Transactions](#transactions)
   - [Scripts](#scripts)
   - [Contracts](#contracts)
+  - [Script contract (advanced)](#script-contract-advanced)
   - [Mining](#mining)
   - [Crypto primitives](#crypto-primitives)
   - [Utilities](#utilities)
@@ -207,26 +208,6 @@ These methods call the address indexer and will error if the node was not starte
 | `getTxOutProof(txid, blockHash?)` | proof hex |
 | `verifyTxOutProof(proof)` | `string[]` txids |
 
-#### Wallet (node-managed keys)
-
-| Method | Returns |
-|---|---|
-| `getBalance()` | `number` BITOK |
-| `getNewAddress(label?)` | `string` address |
-| `sendToAddress(address, amount, comment?, commentTo?)` | txid |
-| `getReceivedByAddress(address, minconf?)` | `number` |
-| `getReceivedByLabel(label, minconf?)` | `number` |
-| `listTransactions(count?, includeGenerated?)` | `ListTransaction[]` |
-| `listReceivedByAddress(minconf?, includeEmpty?)` | address summaries |
-| `listReceivedByLabel(minconf?, includeEmpty?)` | label summaries |
-| `getAddressesByLabel(label)` | `string[]` |
-| `setLabel(address, label)` | — |
-| `getLabel(address)` | `string` |
-| `dumpPrivKey(address)` | WIF `string` |
-| `importPrivKey(wif, label?, rescan?)` | `string` |
-| `validateAddress(address)` | `AddressInfo` |
-| `rescanWallet()` | `{ found: number }` |
-
 #### Multisig
 
 | Method | Returns |
@@ -239,6 +220,53 @@ These methods call the address indexer and will error if the node was not starte
 |---|---|
 | `analyzeScript(scriptHex)` | `RpcScriptAnalysis` |
 | `validateScript(scriptHex, stack?, flags?)` | `RpcScriptValidationResult` — `stack` is `string[]` (hex items), `flags` defaults to `'exec'` |
+
+#### Script builder RPCs (node-side)
+
+These five methods were added to support advanced script workflows where the node assembles, sets, hashes, decodes, and verifies scripts on custom transactions. They are the backbone of the `ScriptContract` class.
+
+| Method | Returns | Description |
+|---|---|---|
+| `buildScript(items)` | `RpcBuildScriptResult` | Assembles a script from opcode names and hex data pushes. Returns `{ hex, asm, size, type, withinLimits }`. |
+| `setScriptSig(rawTxHex, vinIndex, scriptSig)` | `RpcSetScriptSigResult` | Sets a custom scriptSig on a raw transaction input. Returns `{ hex, scriptSig, scriptSigAsm, inputIndex }`. |
+| `getScriptSigHash(rawTxHex, vinIndex, scriptPubKeyHex, sighashType?)` | `RpcSigHashResult` | Computes the signature hash for an input for external signing. `sighashType` is a string: `'ALL'` (default), `'NONE'`, `'SINGLE'`, `'ALL\|ANYONECANPAY'`, etc. Returns `{ sighash, hashType, hashTypeName }`. |
+| `decodeScriptSig(scriptSigHex, scriptPubKeyHex)` | `RpcDecodedScriptSig` | Decodes scriptSig elements with role identification. Both parameters are required. |
+| `verifyScriptPair(rawTxHex, vinIndex, scriptPubKeyHex, flags?)` | `RpcVerifyScriptPairResult` | Full scriptSig + scriptPubKey verification against a real transaction. The scriptSig is read from the transaction's input. `flags` defaults to `'exec'`. |
+
+```ts
+// Assemble a hash puzzle script on the node
+const result = await rpc.buildScript([
+  'OP_SHA256',
+  'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+  'OP_EQUAL',
+]);
+const scriptHex = result.hex;
+
+// Compute signature hash for an input
+const { sighash, hashType, hashTypeName } = await rpc.getScriptSigHash(
+  rawTxHex,
+  0,
+  scriptPubKeyHex,
+  'ALL'
+);
+
+// Set a custom scriptSig on a transaction input
+const updated = await rpc.setScriptSig(rawTxHex, 0, [sigHex, pubkeyHex]);
+const updatedTxHex = updated.hex;
+
+// Decode a scriptSig to understand each element's role
+const decoded = await rpc.decodeScriptSig(scriptSigHex, scriptPubKeyHex);
+// decoded.scriptSigAsm — human-readable assembly
+// decoded.elements     — [{ index, hex, size, role }] where role is 'signature', 'pubkey', 'preimage', etc.
+// decoded.type         — script type
+// decoded.isPushOnly   — whether scriptSig is push-only (required post-activation)
+
+// Verify a scriptSig + scriptPubKey pair against a real transaction
+// NOTE: the scriptSig is read from the transaction input, not passed separately
+const result2 = await rpc.verifyScriptPair(rawTxHex, 0, scriptPubKeyHex);
+// result2.verified    — true if the script pair passes verification
+// result2.diagnostics — array of diagnostic strings if verification failed
+```
 
 #### Hash preimages (hashlock support)
 
@@ -368,7 +396,7 @@ const htlc = ScriptBuilder.htlc(preimageHash, receiverPubkeyHash, refundPubkeyHa
 const covenant = ScriptBuilder.catCovenant(expectedData);
 
 // Arithmetic condition using OP_MUL (re-enabled)
-// Stack top × multiplier must satisfy comparison against threshold
+// Stack top * multiplier must satisfy comparison against threshold
 const cond = ScriptBuilder.arithmeticCondition(3, 100, 'gte');
 // comparisons: 'gt' | 'gte' | 'lt' | 'lte' | 'eq'
 
@@ -545,6 +573,305 @@ const decoded = decodeOpReturn(scriptHex);
 
 ---
 
+### Script contract (advanced)
+
+`import { ScriptContract } from 'bitok/contract'`
+
+The `ScriptContract` class provides a high-level workflow for deploying and spending arbitrary custom scripts via the node's `buildscript`, `setscriptsig`, `getscriptsighash`, `decodescriptsig`, and `verifyscriptpair` RPCs. This is the primary tool for working with Bitok's re-enabled opcodes in a web3 context.
+
+```ts
+import { ScriptContract } from 'bitok/contract';
+import { BitokRpc } from 'bitok/rpc';
+
+const rpc = new BitokRpc({ host: '127.0.0.1', port: 8332, user: 'rpc', pass: 'rpc' });
+const sc = new ScriptContract(rpc);
+```
+
+#### Building a script from opcodes
+
+Assemble a script on the node from opcode names and hex data pushes:
+
+```ts
+const scriptHex = await sc.buildScriptHex([
+  'OP_SHA256',
+  'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+  'OP_EQUAL',
+]);
+```
+
+#### Funding a script output
+
+Send coins to a custom script address. The `fund` method creates, signs, and broadcasts a transaction that pays to your script:
+
+```ts
+const funding = await sc.fund(
+  scriptPubKeyHex,         // the script to fund
+  0.5,                     // amount in BITOK
+  [{ txid: '...', vout: 0 }], // UTXOs to spend
+  changeAddress,           // where leftover goes
+  0.499,                   // change amount in BITOK
+  [wifKey]                 // signing keys
+);
+// funding.fundingTxid        — txid of the funding transaction
+// funding.vout               — output index where the script sits
+// funding.scriptPubKeyHex    — the funded script
+// funding.amountBitok        — funded amount
+```
+
+#### Computing a signature hash
+
+Get the sighash for an input so you can sign it with a browser-side key:
+
+```ts
+const { sighash, hashType, hashTypeName } = await sc.getSigHash(
+  rawTxHex,
+  0,                        // input index
+  scriptPubKeyHex,
+  'ALL'                     // sighash type string (default)
+);
+```
+
+#### Signing with a private key
+
+Sign a sighash using a local private key (never leaves the browser):
+
+```ts
+const sigHex = sc.signSigHash(sighash, privateKeyBytes, 'ALL');
+```
+
+#### Assembling a scriptSig
+
+Build a push-only scriptSig from hex data items:
+
+```ts
+const scriptSigHex = sc.buildScriptSigFromPushes([sigHex, pubkeyHex, preimageHex]);
+```
+
+#### Setting a scriptSig on a transaction
+
+Inject a custom scriptSig into a raw transaction input:
+
+```ts
+const updatedTxHex = await sc.setScriptSig(rawTxHex, 0, [sigHex, pubkeyHex]);
+// or as a single hex string:
+const updatedTxHex2 = await sc.setScriptSig(rawTxHex, 0, scriptSigHex);
+```
+
+#### Verifying before broadcast
+
+Verify the scriptSig + scriptPubKey pair is valid before sending. The node reads the scriptSig from the transaction input directly:
+
+```ts
+const result = await sc.verify(rawTxHex, 0, scriptPubKeyHex);
+// result.verified    — true if verification passed
+// result.diagnostics — array of diagnostic strings if it failed
+```
+
+#### Decoding a scriptSig
+
+Inspect each element of a scriptSig with context from the scriptPubKey. Both parameters are required:
+
+```ts
+const decoded = await sc.decodeScriptSig(scriptSigHex, scriptPubKeyHex);
+// decoded.scriptSigAsm — human-readable assembly
+// decoded.elements     — [{ index, hex, size, role }]
+//   roles: 'signature', 'pubkey', 'preimage', 'dummy', 'push_N'
+// decoded.type         — script type
+// decoded.isPushOnly   — true if scriptSig contains only push opcodes
+```
+
+#### Analyzing a script
+
+Run static analysis on any script:
+
+```ts
+const analysis = await sc.analyzeScript(scriptPubKeyHex);
+```
+
+#### Full spend workflow
+
+The `spend` method handles the complete lifecycle — creates a spending transaction, optionally signs it, sets the scriptSig, verifies, and broadcasts:
+
+```ts
+const result = await sc.spend(
+  funding.fundingTxid,       // txid of the funded output
+  funding.vout,              // vout index
+  scriptPubKeyHex,           // the script being spent
+  ['{signature}', pubkeyHex, preimageHex],  // scriptSig items ({signature} is auto-replaced)
+  destinationAddress,        // where to send the coins
+  0.499,                     // amount in BITOK (minus fee)
+  privateKeyBytes,           // optional: signs and replaces {signature}
+  'ALL'                      // sighash type string (default)
+);
+// result.spendTxid  — txid if broadcast succeeded
+// result.verified   — true if the script pair verified
+// result.verifyError — reason if verification failed
+```
+
+#### End-to-end example: hash puzzle
+
+A complete example deploying a SHA256 hash puzzle and spending it:
+
+```ts
+import { BitokRpc } from 'bitok/rpc';
+import { ScriptContract } from 'bitok/contract';
+import { Wallet } from 'bitok/wallet';
+
+const rpc = new BitokRpc({ host: '127.0.0.1', port: 8332, user: 'rpc', pass: 'rpc' });
+const sc = new ScriptContract(rpc);
+
+// 1. The puzzle: SHA256 of the empty string
+const secretHex = '';
+const hashHex = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+
+// 2. Build the locking script: OP_SHA256 <hash> OP_EQUAL
+const puzzleScript = await sc.buildScriptHex([
+  'OP_SHA256', hashHex, 'OP_EQUAL',
+]);
+
+// 3. Fund the puzzle (send coins to the script)
+const wallet = Wallet.fromWIF('your-WIF-key-here');
+const utxos = await wallet.getUTXOs(rpc);
+const funding = await sc.fund(
+  puzzleScript,
+  0.01,
+  [{ txid: utxos[0].txid, vout: utxos[0].vout }],
+  wallet.address,
+  0.489,
+  [wallet.privateKeyWIF]
+);
+
+// 4. Spend the puzzle — push the empty string as the preimage
+const result = await sc.spend(
+  funding.fundingTxid,
+  funding.vout,
+  puzzleScript,
+  ['00'],                    // the preimage (empty bytes = 0x00 push)
+  wallet.address,
+  0.009,
+);
+console.log('Puzzle solved! txid:', result.spendTxid);
+```
+
+#### End-to-end example: arithmetic gate with signature
+
+A script that requires solving `a + b = 42` AND a valid signature:
+
+```ts
+import { BitokRpc } from 'bitok/rpc';
+import { ScriptContract } from 'bitok/contract';
+import { Wallet } from 'bitok/wallet';
+import { hexToBytes } from 'bitok';
+
+const rpc = new BitokRpc({ host: '127.0.0.1', port: 8332, user: 'rpc', pass: 'rpc' });
+const sc = new ScriptContract(rpc);
+const wallet = Wallet.fromWIF('your-WIF-key-here');
+
+// 1. Build: <a> <b> OP_ADD <42> OP_EQUALVERIFY OP_DUP OP_HASH160 <pkh> OP_EQUALVERIFY OP_CHECKSIG
+const scriptHex = await sc.buildScriptHex([
+  'OP_ADD', '2a', 'OP_EQUALVERIFY',
+  'OP_DUP', 'OP_HASH160', wallet.hash160Hex, 'OP_EQUALVERIFY', 'OP_CHECKSIG',
+]);
+
+// 2. Fund the script
+const utxos = await wallet.getUTXOs(rpc);
+const funding = await sc.fund(
+  scriptHex, 0.01,
+  [{ txid: utxos[0].txid, vout: utxos[0].vout }],
+  wallet.address, 0.489, [wallet.privateKeyWIF]
+);
+
+// 3. Spend: push operands (25 + 17 = 42) plus signature
+// scriptSig push order (bottom to top): <25> <17> <sig> <pubkey>
+// {signature} is replaced with the real DER signature automatically
+const privKey = hexToBytes(wallet.privateKeyHex);
+const result = await sc.spend(
+  funding.fundingTxid, funding.vout, scriptHex,
+  ['{signature}', wallet.publicKeyHex, '19', '11'],  // 0x19=25, 0x11=17
+  wallet.address, 0.009,
+  privKey, 'ALL'
+);
+console.log('Arithmetic gate spent! txid:', result.spendTxid);
+```
+
+#### End-to-end example: bitwise AND mask with signature
+
+A script that checks `data AND mask == expected`, then requires a signature:
+
+```ts
+// 1. Build: <mask> OP_AND <expected> OP_EQUALVERIFY OP_DUP OP_HASH160 <pkh> OP_EQUALVERIFY OP_CHECKSIG
+const maskHex = 'ff00ff00';
+const expectedHex = 'ab00cd00';
+
+const scriptHex = await sc.buildScriptHex([
+  maskHex, 'OP_AND', expectedHex, 'OP_EQUALVERIFY',
+  'OP_DUP', 'OP_HASH160', wallet.hash160Hex, 'OP_EQUALVERIFY', 'OP_CHECKSIG',
+]);
+
+// 2. Fund & spend — push data that passes the mask check
+// Any data where (data & ff00ff00) == ab00cd00, e.g. 'ab12cd34'
+const result = await sc.spend(
+  fundingTxid, vout, scriptHex,
+  ['{signature}', wallet.publicKeyHex, 'ab12cd34'],
+  wallet.address, 0.009,
+  privKey, 'ALL'
+);
+```
+
+#### End-to-end example: OP_CAT hash covenant
+
+A script that verifies `SHA256(a || b) == expected_hash`:
+
+```ts
+import { sha256Single } from 'bitok/crypto';
+import { hexToBytes, bytesToHex, concatBytes } from 'bitok';
+
+// 1. Compute the expected hash off-chain
+const partA = hexToBytes('deadbeef');
+const partB = hexToBytes('cafebabe');
+const combined = concatBytes(partA, partB);
+const expectedHash = bytesToHex(sha256Single(combined));
+
+// 2. Build: OP_CAT OP_SHA256 <hash> OP_EQUAL
+const scriptHex = await sc.buildScriptHex([
+  'OP_CAT', 'OP_SHA256', expectedHash, 'OP_EQUAL',
+]);
+
+// 3. Spend — push the two parts
+const result = await sc.spend(
+  fundingTxid, vout, scriptHex,
+  ['deadbeef', 'cafebabe'],  // partA, partB
+  wallet.address, 0.009,
+);
+```
+
+#### End-to-end example: OP_SUBSTR splice check
+
+A script that verifies a substring at a given offset matches expected data:
+
+```ts
+// Script: <begin> <length> OP_SUBSTR <expected> OP_EQUALVERIFY
+//         OP_DUP OP_HASH160 <pkh> OP_EQUALVERIFY OP_CHECKSIG
+const scriptHex = await sc.buildScriptHex([
+  '02',         // begin offset = 2
+  '04',         // length = 4
+  'OP_SUBSTR',
+  'deadbeef',   // expected 4-byte substring
+  'OP_EQUALVERIFY',
+  'OP_DUP', 'OP_HASH160', wallet.hash160Hex, 'OP_EQUALVERIFY', 'OP_CHECKSIG',
+]);
+
+// Spend: push data where bytes[2..6] == 'deadbeef'
+const result = await sc.spend(
+  fundingTxid, vout, scriptHex,
+  ['{signature}', wallet.publicKeyHex, 'aabbdeadbeefccdd'],
+  wallet.address, 0.009,
+  privKey, 'ALL'
+);
+```
+
+---
+
 ### Mining
 
 `import { ... } from 'bitok/mining'`
@@ -581,7 +908,7 @@ const rpc = new BitokRpc({ host: '127.0.0.1', port: 8332, user: 'rpc', pass: 'rp
 const template  = await rpc.getBlockTemplate();
 const candidate = prepareMiningCandidate(template, minerAddress);
 
-// candidate.header           — 80-byte block header (nonce sits at bytes 76–79)
+// candidate.header           — 80-byte block header (nonce sits at bytes 76-79)
 // candidate.target           — 64-char hex target the hash must be <= to
 // candidate.merkleRoot       — merkle root hex
 // candidate.coinbaseTxHex    — serialized coinbase transaction hex
@@ -616,13 +943,13 @@ const coinbaseTxHex = buildCoinbaseTx(
 // Build an 80-byte block header
 const header = buildBlockHeader(version, prevHash, merkleRoot, time, bits, nonce);
 
-// Difficulty ↔ target conversion
+// Difficulty <-> target conversion
 const targetHex  = difficultyToTarget(1234.56);
 const difficulty = targetToDifficulty(targetHex);
-const target64   = nbitsToTarget(0x1e0fffff);   // convert compact bits → target hex
+const target64   = nbitsToTarget(0x1e0fffff);   // convert compact bits -> target hex
 
 // Block reward schedule (identical to Bitcoin — halves every 210,000 blocks)
-const reward = calculateBlockReward(height);    // → bigint satoshis
+const reward = calculateBlockReward(height);    // -> bigint satoshis
 
 // Estimated network hashrate
 const hps = estimateHashrate(blocksFound, difficulty, timeSeconds);
@@ -668,9 +995,9 @@ const pubKeyC  = privateKeyToPublicKey(privKey, true); // compressed (33 bytes)
 const address  = publicKeyToAddress(pubKey);           // Base58Check P2PKH address
 
 const wif      = privateKeyToWIF(privKey);             // WIF-encode the private key
-const privKey2 = wifToPrivateKey(wif);                 // decode WIF → raw Uint8Array
+const privKey2 = wifToPrivateKey(wif);                 // decode WIF -> raw Uint8Array
 
-const h160    = addressToHash160(address);             // decode address → 20-byte Uint8Array
+const h160    = addressToHash160(address);             // decode address -> 20-byte Uint8Array
 const valid   = isValidAddress(address);               // boolean
 const validPk = isValidPrivateKey(privKey);            // boolean
 ```
@@ -696,10 +1023,10 @@ All curve operations use `@noble/curves/secp256k1`. All hash operations use `@no
 #### Byte helpers
 
 ```ts
-hexToBytes('deadbeef')              // → Uint8Array([0xde, 0xad, 0xbe, 0xef])
-bytesToHex(new Uint8Array([1, 2]))  // → '0102'
-concatBytes(a, b, c)               // → new Uint8Array (copies all inputs)
-reverseBytes(bytes)                // → new Uint8Array (copy, not in-place)
+hexToBytes('deadbeef')              // -> Uint8Array([0xde, 0xad, 0xbe, 0xef])
+bytesToHex(new Uint8Array([1, 2]))  // -> '0102'
+concatBytes(a, b, c)               // -> new Uint8Array (copies all inputs)
+reverseBytes(bytes)                // -> new Uint8Array (copy, not in-place)
 ```
 
 #### VarInt
@@ -707,10 +1034,10 @@ reverseBytes(bytes)                // → new Uint8Array (copy, not in-place)
 Bitcoin-compatible variable-length integer encoding used in transaction serialization.
 
 ```ts
-encodeVarInt(252n)   // → Uint8Array([0xfc])            — 1 byte
-encodeVarInt(253n)   // → Uint8Array([0xfd, 0xfd, 0x00]) — 3 bytes
+encodeVarInt(252n)   // -> Uint8Array([0xfc])            — 1 byte
+encodeVarInt(253n)   // -> Uint8Array([0xfd, 0xfd, 0x00]) — 3 bytes
 const { value, bytesRead } = decodeVarInt(bytes, offset);
-varIntSize(300n)     // → 3  (number of bytes needed to encode 300)
+varIntSize(300n)     // -> 3  (number of bytes needed to encode 300)
 ```
 
 ---
@@ -737,11 +1064,11 @@ All constants are exported from `'bitok'` (root) and `'bitok/types'`.
 | `RPC_PORT` | `8332` | JSON-RPC port |
 | `PROTOCOL_VERSION` | `319` | Wire protocol version |
 | `NETWORK_MAGIC` | `0xb40bc0de` | 4-byte network identifier |
-| `GENESIS_HASH` | `0290400e…` | Hash of block 0 |
+| `GENESIS_HASH` | `0290400e...` | Hash of block 0 |
 | `GENESIS_NBITS` | `0x1effffff` | Genesis difficulty target |
 | `GENESIS_NONCE` | `37137` | |
 | `GENESIS_TIME` | `1231006505` | Genesis block timestamp |
-| `POW_LIMIT_HEX` | `00007fff…` | Minimum difficulty target (max target) |
+| `POW_LIMIT_HEX` | `00007fff...` | Minimum difficulty target (max target) |
 | `YESPOWER_N` | `2048` | Yespower memory cost parameter |
 | `YESPOWER_R` | `32` | Yespower block size parameter |
 | `YESPOWER_PERS` | `'BitokPoW'` | Yespower personalization string |
@@ -771,20 +1098,24 @@ Bitok re-enables several opcodes that Bitcoin permanently disabled. These opcode
 | Opcode | Effect |
 |---|---|
 | `OP_CAT` | Concatenates the top two stack items |
+| `OP_SUBSTR` | Extracts a substring from a stack item |
+| `OP_LEFT` / `OP_RIGHT` | Takes the left or right N bytes of a stack item |
+| `OP_AND` / `OP_OR` / `OP_XOR` | Bitwise operations on two stack items |
+| `OP_INVERT` | Bitwise NOT of a stack item |
 | `OP_MUL` | Multiplies the top two stack items |
 | `OP_DIV` | Integer division |
 | `OP_MOD` | Modulo |
-| `OP_LSHIFT` / `OP_RSHIFT` | Bitwise left/right shift |
+| `OP_LSHIFT` / `OP_RSHIFT` | Bitwise left/right shift (max 31) |
 | `OP_2MUL` / `OP_2DIV` | Multiply or divide top item by 2 |
 
-`ScriptBuilder.catCovenant()` and `ScriptBuilder.arithmeticCondition()` provide ready-made templates that use these opcodes.
+The `ScriptContract` class and `ScriptBuilder` provide ready-made templates and workflows that use these opcodes. The five RPC methods (`buildscript`, `setscriptsig`, `getscriptsighash`, `decodescriptsig`, `verifyscriptpair`) enable the full lifecycle of deploying and spending custom scripts from the SDK.
 
 Other Bitok-specific characteristics:
 
-- **Yespower PoW** — GPU/ASIC-resistant, CPU-friendly proof of work (N=2048, r=32, personalization `BitokPoW`)
-- **Timewarp fix** — activates at block 16,000
-- **Network magic** — `0xb40bc0de`
-- **Genesis block** — timestamp `1231006505`, nonce `37137`
+- **Yespower PoW** -- GPU/ASIC-resistant, CPU-friendly proof of work (N=2048, r=32, personalization `BitokPoW`)
+- **Timewarp fix** -- activates at block 16,000
+- **Network magic** -- `0xb40bc0de`
+- **Genesis block** -- timestamp `1231006505`, nonce `37137`
 
 ---
 
@@ -822,4 +1153,6 @@ Common validation errors thrown by the SDK:
 | Invalid txid in merkle root | `Invalid txid length: expected 64 hex chars, got N` |
 | Invalid sighash type | `Invalid sighash base type: 0xN (must be SIGHASH_ALL=1, SIGHASH_NONE=2, or SIGHASH_SINGLE=3)` |
 | Buffer too short in deserialization | `deserializeTransaction: buffer too short at offset N` |
-| Yespower not registered | `Yespower implementation not set. Call setYespowerImplementation()…` |
+| Yespower not registered | `Yespower implementation not set. Call setYespowerImplementation()...` |
+| Funding transaction signing incomplete | `Funding transaction signing incomplete` |
+| Script output not found in funded tx | `Script output not found in funded transaction` |

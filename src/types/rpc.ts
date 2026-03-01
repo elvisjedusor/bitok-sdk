@@ -233,3 +233,60 @@ export interface AddressUtxo {
   confirmations: number;
   coinbase: boolean;
 }
+
+export interface RpcBuildScriptResult {
+  hex: string;
+  asm: string;
+  size: number;
+  type: string;
+  reqSigs?: number;
+  addresses?: string[];
+  withinLimits: boolean;
+}
+
+export interface RpcSetScriptSigResult {
+  hex: string;
+  scriptSig: string;
+  scriptSigAsm: string;
+  inputIndex: number;
+}
+
+export interface RpcSigHashResult {
+  sighash: string;
+  inputIndex: number;
+  hashType: number;
+  hashTypeName: string;
+  scriptPubKeyAsm: string;
+}
+
+export interface RpcScriptSigElement {
+  index: number;
+  hex?: string;
+  size?: number;
+  opcode?: string;
+  value?: number;
+  role: string;
+}
+
+export interface RpcDecodedScriptSig {
+  scriptSig: string;
+  scriptSigAsm: string;
+  scriptPubKey: string;
+  scriptPubKeyAsm: string;
+  type: string;
+  elements: RpcScriptSigElement[];
+  pushCount: number;
+  isPushOnly: boolean;
+}
+
+export interface RpcVerifyScriptPairResult {
+  verified: boolean;
+  inputIndex: number;
+  scriptSig: string;
+  scriptSigAsm: string;
+  scriptPubKey: string;
+  scriptPubKeyAsm: string;
+  type: string;
+  flags: string;
+  diagnostics?: string[];
+}

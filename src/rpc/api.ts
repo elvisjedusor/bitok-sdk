@@ -10,6 +10,11 @@ import {
   BlockHeaderInfo,
   RpcScriptAnalysis,
   RpcScriptValidationResult,
+  RpcBuildScriptResult,
+  RpcSetScriptSigResult,
+  RpcSigHashResult,
+  RpcDecodedScriptSig,
+  RpcVerifyScriptPairResult,
   IndexerInfo,
   AddressUtxo,
 } from '../types/rpc';
@@ -170,6 +175,46 @@ export class BitokRpc {
     flags = 'exec'
   ): Promise<RpcScriptValidationResult> {
     return this.client.call<RpcScriptValidationResult>('validatescript', [scriptHex, stack, flags]);
+  }
+
+  async buildScript(items: string[]): Promise<RpcBuildScriptResult> {
+    return this.client.call<RpcBuildScriptResult>('buildscript', [items]);
+  }
+
+  async setScriptSig(
+    rawTxHex: string,
+    vinIndex: number,
+    scriptSig: string | string[]
+  ): Promise<RpcSetScriptSigResult> {
+    return this.client.call<RpcSetScriptSigResult>('setscriptsig', [rawTxHex, vinIndex, scriptSig]);
+  }
+
+  async getScriptSigHash(
+    rawTxHex: string,
+    vinIndex: number,
+    scriptPubKeyHex: string,
+    sighashType = 'ALL'
+  ): Promise<RpcSigHashResult> {
+    return this.client.call<RpcSigHashResult>('getscriptsighash', [rawTxHex, vinIndex, scriptPubKeyHex, sighashType]);
+  }
+
+  async decodeScriptSig(
+    scriptSigHex: string,
+    scriptPubKeyHex: string
+  ): Promise<RpcDecodedScriptSig> {
+    return this.client.call<RpcDecodedScriptSig>('decodescriptsig', [scriptSigHex, scriptPubKeyHex]);
+  }
+
+  async verifyScriptPair(
+    rawTxHex: string,
+    vinIndex: number,
+    scriptPubKeyHex: string,
+    flags = 'exec'
+  ): Promise<RpcVerifyScriptPairResult> {
+    return this.client.call<RpcVerifyScriptPairResult>(
+      'verifyscriptpair',
+      [rawTxHex, vinIndex, scriptPubKeyHex, flags]
+    );
   }
 
   // ─── Hash Preimages ───────────────────────────────────────────────────────────

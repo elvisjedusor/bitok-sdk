@@ -172,10 +172,6 @@ export function signTransaction(
   const allComplete = signedInputs.every((s) => s.complete);
   const hex = bytesToHex(serializeTransaction(signed as Transaction));
 
-  for (const privKey of privateKeys) {
-    privKey.fill(0);
-  }
-
   return { hex, complete: allComplete, inputs: signedInputs };
 }
 

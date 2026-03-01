@@ -133,7 +133,7 @@ export class Wallet {
       const hasChange = totalIn - amountSatoshis - MIN_FEE_PER_KB > 0n;
       const outputCount = hasChange ? 2 : 1;
       const estimatedSize = 10 + roughSelected.length * 180 + outputCount * 34;
-      fee = BigInt(Math.ceil(estimatedSize / 1000)) * MIN_FEE_PER_KB;
+      fee = BigInt(1 + Math.floor(estimatedSize / 1000)) * MIN_FEE_PER_KB;
       selected = selectUTXOs(utxos, amountSatoshis, fee);
     }
 

@@ -65,8 +65,16 @@ function numToBytes(n: number): Uint8Array {
 // When flag is NOT set, no size or minimal encoding check.
 // --------------------------------------------------------------------------
 function checkNumSize(v: Uint8Array, flags: number): void {
-  if ((flags & SCRIPT_VERIFY_EXEC) && v.length > 4) {
+  if (!(flags & SCRIPT_VERIFY_EXEC)) return;
+  if (v.length > 4) {
     throw new Error('Script number overflow');
+  }
+  if (v.length > 0) {
+    if ((v[v.length - 1] & 0x7f) === 0) {
+      if (v.length <= 1 || (v[v.length - 2] & 0x80) === 0) {
+        throw new Error('Non-minimally encoded script number');
+      }
+    }
   }
 }
 
@@ -1102,11 +1110,7 @@ export function evalScript(
 
           let csResult = false;
 
-          if (csPubKey.length !== 65 || csPubKey[0] !== 0x04) {
-            return { success: false, finalStack: stack.map((v) => bytesToHex(v)), error: 'OP_CHECKSIG: invalid public key (must be 65-byte uncompressed)' };
-          }
-
-          if (context.tx && context.inputIndex !== undefined) {
+          if (context.tx && context.inputIndex !== undefined && csPubKey.length === 65 && csPubKey[0] === 0x04) {
             // Rule #15: scriptCode is script.slice(lastCodeSepEndOffset)
             // then findAndDelete(sig), then stripCodeSeparators
             let scriptCodeForSig: Uint8Array = new Uint8Array(script.buffer, script.byteOffset + lastCodeSepEndOffset, script.length - lastCodeSepEndOffset);
@@ -1180,12 +1184,6 @@ export function evalScript(
             msScriptCode = findAndDelete(msScriptCode, sigRaw);
           }
           const msCleaned = stripCodeSeparators(msScriptCode);
-
-          for (const msPk of msPubKeys) {
-            if (msPk.length !== 65 || msPk[0] !== 0x04) {
-              return { success: false, finalStack: stack.map((v) => bytesToHex(v)), error: 'OP_CHECKMULTISIG: invalid public key (must be 65-byte uncompressed)' };
-            }
-          }
 
           // Rule #17: check encoding for all sigs
           for (const sigRaw of msSigs) {

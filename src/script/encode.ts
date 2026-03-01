@@ -72,24 +72,24 @@ export function parseScript(bytes: Uint8Array): ParsedToken[] {
     i++;
 
     if (op === 0x00) {
-      tokens.push({ type: 'data', data: new Uint8Array(0), endOffset: i });
+      tokens.push({ type: 'data', data: new Uint8Array(0), opcode: op, endOffset: i });
     } else if (op >= 0x01 && op <= 0x4b) {
       const data = bytes.slice(i, i + op);
       i += op;
-      tokens.push({ type: 'data', data, endOffset: i });
+      tokens.push({ type: 'data', data, opcode: op, endOffset: i });
     } else if (op === Opcode.OP_PUSHDATA1) {
       const len = bytes[i++];
-      tokens.push({ type: 'data', data: bytes.slice(i, i + len), endOffset: i + len });
+      tokens.push({ type: 'data', data: bytes.slice(i, i + len), opcode: op, endOffset: i + len });
       i += len;
     } else if (op === Opcode.OP_PUSHDATA2) {
       const len = new DataView(bytes.buffer, bytes.byteOffset + i).getUint16(0, true);
       i += 2;
-      tokens.push({ type: 'data', data: bytes.slice(i, i + len), endOffset: i + len });
+      tokens.push({ type: 'data', data: bytes.slice(i, i + len), opcode: op, endOffset: i + len });
       i += len;
     } else if (op === Opcode.OP_PUSHDATA4) {
       const len = new DataView(bytes.buffer, bytes.byteOffset + i).getUint32(0, true);
       i += 4;
-      tokens.push({ type: 'data', data: bytes.slice(i, i + len), endOffset: i + len });
+      tokens.push({ type: 'data', data: bytes.slice(i, i + len), opcode: op, endOffset: i + len });
       i += len;
     } else if (op === Opcode.OP_1NEGATE) {
       tokens.push({ type: 'number', value: -1, opcode: op, endOffset: i });

@@ -115,7 +115,7 @@ export class TransactionBuilder {
     const isFree = priority >= FREE_PRIORITY_THRESHOLD && txSizeBytes < 1000;
 
     const feePerKb = MIN_FEE_PER_KB;
-    const baseFee = BigInt(Math.ceil(txSizeBytes / 1000)) * feePerKb;
+    const baseFee = BigInt(1 + Math.floor(txSizeBytes / 1000)) * feePerKb;
     const hasDustOutput = this.outputs.some((o) => o.value < DUST_THRESHOLD);
     const minFee = hasDustOutput && baseFee < feePerKb ? feePerKb : baseFee;
     const totalFee = isFree ? 0n : minFee;

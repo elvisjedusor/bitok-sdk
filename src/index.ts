@@ -11,3 +11,4 @@ export * from './wallet/index';
 export { BitokRpc } from './rpc/api';
 export { ScriptBuilder } from './script/builder';
 export { TransactionBuilder } from './tx/builder';
+export { ScriptContract } from './contract/script-contract';
