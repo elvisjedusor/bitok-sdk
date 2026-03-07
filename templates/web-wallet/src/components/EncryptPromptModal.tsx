@@ -49,7 +49,7 @@ export function EncryptPromptModal({ wallet, onEncrypted, onDismiss }: EncryptPr
             <h2 className={styles.title}>Your wallet is not protected</h2>
             <p className={styles.desc}>
               Your private key is currently stored in plaintext in your browser's localStorage.
-              Any malicious browser extension or XSS attack can read it directly — no hacking required.
+              Any malicious browser extension or XSS attack can read it directly.
             </p>
             <p className={styles.desc}>
               Adding a password encrypts the key with AES-256. Even if localStorage is read, the key cannot be used without your password.
