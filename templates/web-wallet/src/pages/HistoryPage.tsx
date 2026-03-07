@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { BitokRpc } from 'bitok';
 import type { RawTransaction } from 'bitok';
-import { ArrowUpRight, ArrowDownLeft, Zap, RefreshCw } from 'lucide-react';
+import { ArrowUpRight, ArrowDownLeft, Zap, RefreshCw, Clock } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import type { TxHistoryItem } from '../types/wallet';
+import { getPendingTxs, clearConfirmedPending } from '../store/pendingTxStore';
+import type { PendingTx } from '../store/pendingTxStore';
 import styles from './HistoryPage.module.css';
 
 interface HistoryPageProps {
@@ -20,6 +22,7 @@ export function HistoryPage({ rpc, address }: HistoryPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [allTxids, setAllTxids] = useState<string[]>([]);
+  const [pendingTxs, setPendingTxs] = useState<PendingTx[]>(() => getPendingTxs(address));
 
   async function fetchPage(txids: string[], walletAddr: string): Promise<TxHistoryItem[]> {
     return Promise.all(txids.map(txid => resolveItemWithRpc(rpc, txid, walletAddr)));
@@ -31,6 +34,9 @@ export function HistoryPage({ rpc, address }: HistoryPageProps) {
     try {
       const txids = await rpc.getAddressTxids(address);
       const sorted = [...txids].reverse();
+      const confirmedSet = new Set(txids);
+      clearConfirmedPending(address, confirmedSet);
+      setPendingTxs(getPendingTxs(address));
       setAllTxids(sorted);
       const items = await fetchPage(sorted.slice(0, PAGE_SIZE), address);
       items.sort((a, b) => b.time - a.time);
@@ -80,19 +86,35 @@ export function HistoryPage({ rpc, address }: HistoryPageProps) {
         <div className={styles.errorBanner}>{error}</div>
       )}
 
+      {pendingTxs.length > 0 && (
+        <Card>
+          <div className={styles.pendingSection}>
+            <div className={styles.pendingSectionHeader}>
+              <Clock size={13} />
+              <span>Unconfirmed — awaiting next block</span>
+            </div>
+            <div className={styles.txList}>
+              {pendingTxs.map(tx => (
+                <PendingRow key={tx.txid} tx={tx} />
+              ))}
+            </div>
+          </div>
+        </Card>
+      )}
+
       <Card>
         {loading && txs.length === 0 ? (
           <div className={styles.loading}>
             <div className={styles.spinner} />
             <span>Loading transactions...</span>
           </div>
-        ) : txs.length === 0 ? (
+        ) : txs.length === 0 && pendingTxs.length === 0 ? (
           <div className={styles.empty}>
             <div className={styles.emptyIcon}>📭</div>
             <div className={styles.emptyTitle}>No transactions yet</div>
             <div className={styles.emptyDesc}>Transactions will appear here once your node is connected.</div>
           </div>
-        ) : (
+        ) : txs.length === 0 ? null : (
           <div className={styles.txList}>
             {txs.map(tx => (
               <TxRow key={tx.txid} tx={tx} />
@@ -198,6 +220,37 @@ function Detail({ label, value, mono }: { label: string; value: string; mono?: b
     <div className={styles.detail}>
       <span className={styles.detailLabel}>{label}</span>
       <span className={`${styles.detailValue} ${mono ? styles.detailMono : ''}`}>{value}</span>
+    </div>
+  );
+}
+
+function PendingRow({ tx }: { tx: PendingTx }) {
+  const isReceive = tx.category === 'receive';
+  const sign = isReceive ? '+' : '-';
+  const date = new Date(tx.time * 1000);
+
+  return (
+    <div className={`${styles.txRow} ${styles.txRowPending}`}>
+      <div className={styles.txIcon}>
+        <Clock size={16} className={styles.iconPending} />
+      </div>
+      <div className={styles.txMain}>
+        <div className={styles.txTitle}>
+          {isReceive ? 'Receiving' : 'Sending'}
+          <span className={styles.pendingBadge}>Unconfirmed</span>
+        </div>
+        <div className={styles.txSub}>
+          <span className={styles.txid}>{tx.txid.slice(0, 16)}…</span>
+          <span>·</span>
+          <span>0 conf</span>
+        </div>
+      </div>
+      <div className={styles.txRight}>
+        <div className={`${styles.txAmount} ${isReceive ? styles.amountPositive : styles.amountNegative} ${styles.amountPending}`}>
+          {sign}{tx.amount.toFixed(8)}
+        </div>
+        <div className={styles.txDate}>{formatDate(date)}</div>
+      </div>
     </div>
   );
 }

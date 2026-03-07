@@ -90,6 +90,49 @@
   color: var(--color-neutral-700);
 }
 
+.pendingList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  width: 100%;
+}
+
+.pendingRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-neutral-400);
+  background: rgb(234 179 8 / 0.06);
+  border: 1px solid rgb(234 179 8 / 0.18);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+}
+
+.pendingIcon {
+  color: var(--color-warning-500);
+  flex-shrink: 0;
+}
+
+.pendingLabel {
+  flex: 1;
+  color: var(--color-neutral-500);
+}
+
+.pendingAmount {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.pendingAmountSend {
+  color: var(--color-error-400);
+}
+
+.pendingAmountReceive {
+  color: var(--color-success-500);
+}
+
 .addressRow {
   display: flex;
   align-items: center;

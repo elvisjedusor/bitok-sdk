@@ -3,6 +3,7 @@ import {
   TransactionBuilder,
   selectUTXOs,
   bitokToSatoshis,
+  satoshisToBitok,
   signTransaction,
   wifToPrivateKey,
   ScriptBuilder,
@@ -22,6 +23,7 @@ import {
 import type { BitokRpc, UTXO } from 'bitok';
 import type { StoredWallet } from '../types/wallet';
 import { extractPublicKeysFromMultisigScript, orderSignaturesForMultisig } from '../utils/multisig';
+import { addPendingTx } from '../store/pendingTxStore';
 
 export interface BroadcastState {
   broadcasting: boolean;
@@ -85,6 +87,14 @@ export function useBroadcast(wallet: StoredWallet, rpc: BitokRpc) {
           privKey.fill(0);
         }
 
+        addPendingTx({
+          txid,
+          amount: Number(amountSatoshis) / 1e8,
+          fee: Number(feeSatoshis) / 1e8,
+          category: 'send',
+          address: wallet.address,
+          time: Math.floor(Date.now() / 1000),
+        });
         setState({ broadcasting: false, txid, error: null });
         return txid;
       } catch (err) {
@@ -154,6 +164,14 @@ export function useBroadcast(wallet: StoredWallet, rpc: BitokRpc) {
           privKey.fill(0);
         }
 
+        addPendingTx({
+          txid,
+          amount: satoshisToBitok(feeSatoshis),
+          fee: satoshisToBitok(feeSatoshis),
+          category: 'send',
+          address: wallet.address,
+          time: Math.floor(Date.now() / 1000),
+        });
         setState({ broadcasting: false, txid, error: null });
         return txid;
       } catch (err) {
@@ -220,6 +238,14 @@ export function useBroadcast(wallet: StoredWallet, rpc: BitokRpc) {
         privKey.fill(0);
 
         const txid = await rpc.sendRawTransaction(signedHex);
+        addPendingTx({
+          txid,
+          amount: satoshisToBitok(claimAmount),
+          fee: satoshisToBitok(feeSatoshis),
+          category: 'receive',
+          address: destinationAddress,
+          time: Math.floor(Date.now() / 1000),
+        });
         setState({ broadcasting: false, txid, error: null });
         return txid;
       } catch (err) {
@@ -270,6 +296,14 @@ export function useBroadcast(wallet: StoredWallet, rpc: BitokRpc) {
         privKey.fill(0);
 
         const txid = await rpc.sendRawTransaction(signedHex);
+        addPendingTx({
+          txid,
+          amount: satoshisToBitok(claimAmount),
+          fee: satoshisToBitok(feeSatoshis),
+          category: 'receive',
+          address: destinationAddress,
+          time: Math.floor(Date.now() / 1000),
+        });
         setState({ broadcasting: false, txid, error: null });
         return txid;
       } catch (err) {
@@ -320,6 +354,14 @@ export function useBroadcast(wallet: StoredWallet, rpc: BitokRpc) {
         privKey.fill(0);
 
         const txid = await rpc.sendRawTransaction(signedHex);
+        addPendingTx({
+          txid,
+          amount: satoshisToBitok(refundAmount),
+          fee: satoshisToBitok(feeSatoshis),
+          category: 'receive',
+          address: destinationAddress,
+          time: Math.floor(Date.now() / 1000),
+        });
         setState({ broadcasting: false, txid, error: null });
         return txid;
       } catch (err) {

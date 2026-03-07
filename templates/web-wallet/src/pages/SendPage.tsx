@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Wallet as WalletClass, isValidAddress, bitokToSatoshis } from 'bitok';
-import { Send, CheckCircle, XCircle, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Send, CircleCheck as CheckCircle, Circle as XCircle, CircleAlert as AlertCircle, ArrowLeft } from 'lucide-react';
+import { addPendingTx } from '../store/pendingTxStore';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
@@ -52,6 +53,14 @@ export function SendPage({ wallet, rpc, initialScriptHex, onBack }: SendPageProp
         const amountSatoshis = bitokToSatoshis(amount);
         const feeSatoshis = bitokToSatoshis(isNaN(feeNum) ? DEFAULT_FEE : fee);
         const sentTxid = await w.send(rpc, toAddress, amountSatoshis, feeSatoshis);
+        addPendingTx({
+          txid: sentTxid,
+          amount: amountNum,
+          fee: isNaN(feeNum) ? parseFloat(DEFAULT_FEE) : feeNum,
+          category: 'send',
+          address: wallet.address,
+          time: Math.floor(Date.now() / 1000),
+        });
         setTxid(sentTxid);
       } else {
         const sentTxid = await broadcast.fundContract(scriptHex.trim(), amount, fee);

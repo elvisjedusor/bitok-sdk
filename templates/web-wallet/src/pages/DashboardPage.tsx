@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react';
 import { BitokRpc, satoshisToBitok } from 'bitok';
-import { ArrowUpRight, ArrowDownLeft, RefreshCw, Copy, Check, WifiOff } from 'lucide-react';
+import { ArrowUpRight, ArrowDownLeft, RefreshCw, Copy, Check, WifiOff, Clock } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import type { StoredWallet } from '../types/wallet';
+import { getPendingTxs, clearConfirmedPending } from '../store/pendingTxStore';
+import type { PendingTx } from '../store/pendingTxStore';
 import styles from './DashboardPage.module.css';
 
 interface DashboardPageProps {
   wallet: StoredWallet;
   rpc: BitokRpc;
   onNavigate: (view: 'send' | 'receive') => void;
+  refreshKey?: number;
 }
 
 interface NodeInfo {
@@ -19,21 +22,29 @@ interface NodeInfo {
   difficulty: number;
 }
 
-export function DashboardPage({ wallet, rpc, onNavigate }: DashboardPageProps) {
+const POLL_INTERVAL_MS = 30_000;
+
+export function DashboardPage({ wallet, rpc, onNavigate, refreshKey }: DashboardPageProps) {
   const [info, setInfo] = useState<NodeInfo | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [pendingTxs, setPendingTxs] = useState<PendingTx[]>(() => getPendingTxs(wallet.address));
 
   async function fetchInfo() {
     setLoading(true);
     setError(null);
     try {
-      const [nodeInfo, balanceSatoshis] = await Promise.all([
+      const [nodeInfo, balanceSatoshis, txids] = await Promise.all([
         rpc.getInfo(),
         rpc.getAddressBalance(wallet.address),
+        rpc.getAddressTxids(wallet.address).catch(() => [] as string[]),
       ]);
+      const confirmedSet = new Set(txids);
+      clearConfirmedPending(wallet.address, confirmedSet);
+      const remaining = getPendingTxs(wallet.address);
+      setPendingTxs(remaining);
       setInfo({
         balance: satoshisToBitok(balanceSatoshis),
         blocks: nodeInfo.blocks,
@@ -50,7 +61,9 @@ export function DashboardPage({ wallet, rpc, onNavigate }: DashboardPageProps) {
 
   useEffect(() => {
     fetchInfo();
-  }, []);
+    const interval = setInterval(fetchInfo, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [rpc, wallet.address, refreshKey]);
 
   function copyAddress() {
     navigator.clipboard.writeText(wallet.address).then(() => {
@@ -102,6 +115,23 @@ export function DashboardPage({ wallet, rpc, onNavigate }: DashboardPageProps) {
               <span className={styles.balancePlaceholder}>—</span>
             )}
           </div>
+          {pendingTxs.length > 0 && (
+            <div className={styles.pendingList}>
+              {pendingTxs.map(tx => {
+                const isSend = tx.category === 'send';
+                const sign = isSend ? '−' : '+';
+                return (
+                  <div key={tx.txid} className={styles.pendingRow}>
+                    <Clock size={11} className={styles.pendingIcon} />
+                    <span className={styles.pendingLabel}>Unconfirmed</span>
+                    <span className={`${styles.pendingAmount} ${isSend ? styles.pendingAmountSend : styles.pendingAmountReceive}`}>
+                      {sign}{tx.amount.toFixed(4)} BITOK
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           <button className={styles.addressRow} onClick={copyAddress}>
             <span className={styles.addressText}>{shortAddress}</span>
             {copied ? <Check size={13} /> : <Copy size={13} />}

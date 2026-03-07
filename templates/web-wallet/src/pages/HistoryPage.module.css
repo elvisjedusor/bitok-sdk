@@ -195,6 +195,55 @@
   font-size: 11px;
 }
 
+.pendingSection {
+  display: flex;
+  flex-direction: column;
+}
+
+.pendingSectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-warning-500);
+  padding: 8px 4px 10px;
+  border-bottom: 1px solid var(--color-neutral-800);
+  margin-bottom: 2px;
+}
+
+.txRowPending {
+  opacity: 0.8;
+  cursor: default;
+  background: rgb(234 179 8 / 0.04);
+}
+
+.txRowPending:hover {
+  background: rgb(234 179 8 / 0.07);
+}
+
+.iconPending {
+  color: var(--color-warning-500);
+}
+
+.amountPending {
+  opacity: 0.75;
+}
+
+.pendingBadge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 500;
+  background: rgb(234 179 8 / 0.12);
+  color: var(--color-warning-500);
+  border: 1px solid rgb(234 179 8 / 0.3);
+  border-radius: var(--radius-full);
+  vertical-align: middle;
+  letter-spacing: 0.03em;
+}
+
 .loadMore {
   display: flex;
   justify-content: center;
