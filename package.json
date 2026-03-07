@@ -7,44 +7,44 @@
   "types": "./dist/types/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/types/index.d.ts",
       "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js",
-      "types": "./dist/types/index.d.ts"
+      "require": "./dist/cjs/index.js"
     },
     "./rpc": {
+      "types": "./dist/types/rpc/index.d.ts",
       "import": "./dist/esm/rpc/index.js",
-      "require": "./dist/cjs/rpc/index.js",
-      "types": "./dist/types/rpc/index.d.ts"
+      "require": "./dist/cjs/rpc/index.js"
     },
     "./script": {
+      "types": "./dist/types/script/index.d.ts",
       "import": "./dist/esm/script/index.js",
-      "require": "./dist/cjs/script/index.js",
-      "types": "./dist/types/script/index.d.ts"
+      "require": "./dist/cjs/script/index.js"
     },
     "./tx": {
+       "types": "./dist/types/tx/index.d.ts",
       "import": "./dist/esm/tx/index.js",
-      "require": "./dist/cjs/tx/index.js",
-      "types": "./dist/types/tx/index.d.ts"
+      "require": "./dist/cjs/tx/index.js"
     },
     "./wallet": {
+      "types": "./dist/types/wallet/index.d.ts",
       "import": "./dist/esm/wallet/index.js",
-      "require": "./dist/cjs/wallet/index.js",
-      "types": "./dist/types/wallet/index.d.ts"
+      "require": "./dist/cjs/wallet/index.js"
     },
     "./contract": {
+      "types": "./dist/types/contract/index.d.ts",
       "import": "./dist/esm/contract/index.js",
-      "require": "./dist/cjs/contract/index.js",
-      "types": "./dist/types/contract/index.d.ts"
+      "require": "./dist/cjs/contract/index.js"
     },
     "./mining": {
+      "types": "./dist/types/mining/index.d.ts",
       "import": "./dist/esm/mining/index.js",
-      "require": "./dist/cjs/mining/index.js",
-      "types": "./dist/types/mining/index.d.ts"
+      "require": "./dist/cjs/mining/index.js"
     },
     "./crypto": {
+      "types": "./dist/types/crypto/index.d.ts",
       "import": "./dist/esm/crypto/index.js",
-      "require": "./dist/cjs/crypto/index.js",
-      "types": "./dist/types/crypto/index.d.ts"
+      "require": "./dist/cjs/crypto/index.js"
     }
   },
   "files": [
