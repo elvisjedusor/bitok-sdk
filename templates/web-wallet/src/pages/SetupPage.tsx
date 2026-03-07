@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Wallet as WalletClass } from 'bitok';
-import { Eye, EyeOff, Plus, Import, AlertTriangle } from 'lucide-react';
+import { Eye, EyeOff, Plus, Import, TriangleAlert as AlertTriangle, Lock, ShieldOff } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
+import { encryptWIF } from '../utils/crypto';
 import type { StoredWallet } from '../types/wallet';
 import styles from './SetupPage.module.css';
 
@@ -11,6 +12,7 @@ interface SetupPageProps {
 }
 
 type Mode = 'choose' | 'create' | 'import';
+type PasswordStep = 'ask' | 'set' | 'skip';
 
 export function SetupPage({ onWalletCreated }: SetupPageProps) {
   const [mode, setMode] = useState<Mode>('choose');
@@ -19,41 +21,67 @@ export function SetupPage({ onWalletCreated }: SetupPageProps) {
   const [showKey, setShowKey] = useState(false);
   const [generatedWallet, setGeneratedWallet] = useState<{ address: string; wif: string; publicKey: string } | null>(null);
   const [confirmed, setConfirmed] = useState(false);
+  const [passwordStep, setPasswordStep] = useState<PasswordStep>('ask');
+  const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   function handleGenerate() {
     const w = WalletClass.generate();
     setGeneratedWallet(w.exportBackup());
+    setPasswordStep('ask');
     setMode('create');
   }
 
-  function handleCreate() {
-    if (!generatedWallet || !confirmed) return;
-    const stored: StoredWallet = {
-      address: generatedWallet.address,
-      publicKeyHex: generatedWallet.publicKey,
-      wif: generatedWallet.wif,
-      label: label || 'My Wallet',
-      createdAt: Date.now(),
-    };
-    onWalletCreated(stored);
+  async function handleFinish(rawWif: string, walletLabel: string, isImport = false) {
+    if (passwordStep === 'set') {
+      setError('');
+      if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
+      if (password !== passwordConfirm) { setError('Passwords do not match.'); return; }
+      setLoading(true);
+      try {
+        const encryptedWIF = await encryptWIF(rawWif, password);
+        onWalletCreated({
+          address: isImport ? WalletClass.fromWIF(rawWif).address : generatedWallet!.address,
+          publicKeyHex: isImport ? WalletClass.fromWIF(rawWif).publicKeyHex : generatedWallet!.publicKey,
+          encryptedWIF,
+          label: walletLabel || (isImport ? 'Imported Wallet' : 'My Wallet'),
+          createdAt: Date.now(),
+        });
+      } catch {
+        setError('Encryption failed. Please try again.');
+        setLoading(false);
+      }
+    } else {
+      onWalletCreated({
+        address: isImport ? WalletClass.fromWIF(rawWif).address : generatedWallet!.address,
+        publicKeyHex: isImport ? WalletClass.fromWIF(rawWif).publicKeyHex : generatedWallet!.publicKey,
+        wif: rawWif,
+        label: walletLabel || (isImport ? 'Imported Wallet' : 'My Wallet'),
+        createdAt: Date.now(),
+      });
+    }
   }
 
-  function handleImport() {
+  async function handleCreate() {
+    if (!generatedWallet || !confirmed) return;
+    await handleFinish(generatedWallet.wif, label);
+  }
+
+  async function handleImport() {
     setError('');
+    if (!wif.trim()) return;
+    setLoading(true);
     try {
-      const w = WalletClass.fromWIF(wif.trim());
-      const stored: StoredWallet = {
-        address: w.address,
-        publicKeyHex: w.publicKeyHex,
-        wif: w.privateKeyWIF,
-        label: label || 'Imported Wallet',
-        createdAt: Date.now(),
-      };
-      onWalletCreated(stored);
+      WalletClass.fromWIF(wif.trim());
     } catch {
       setError('Invalid WIF key. Please check and try again.');
+      setLoading(false);
+      return;
     }
+    await handleFinish(wif.trim(), label, true);
   }
 
   if (mode === 'choose') {
@@ -71,19 +99,15 @@ export function SetupPage({ onWalletCreated }: SetupPageProps) {
 
           <div className={styles.options}>
             <button className={styles.optionCard} onClick={handleGenerate}>
-              <div className={styles.optionIcon}>
-                <Plus size={24} />
-              </div>
+              <div className={styles.optionIcon}><Plus size={24} /></div>
               <div>
                 <div className={styles.optionTitle}>Create New Wallet</div>
                 <div className={styles.optionDesc}>Generate a fresh key pair</div>
               </div>
             </button>
 
-            <button className={styles.optionCard} onClick={() => setMode('import')}>
-              <div className={styles.optionIcon}>
-                <Import size={24} />
-              </div>
+            <button className={styles.optionCard} onClick={() => { setPasswordStep('ask'); setMode('import'); }}>
+              <div className={styles.optionIcon}><Import size={24} /></div>
               <div>
                 <div className={styles.optionTitle}>Import Existing</div>
                 <div className={styles.optionDesc}>Restore from WIF private key</div>
@@ -91,16 +115,52 @@ export function SetupPage({ onWalletCreated }: SetupPageProps) {
             </button>
           </div>
 
-          <div className={styles.notice}>
-            <AlertTriangle size={14} />
-            <span>This wallet stores keys in browser localStorage. Use for testing only.</span>
-          </div>
+    
         </div>
       </div>
     );
   }
 
   if (mode === 'create' && generatedWallet) {
+    if (passwordStep === 'ask') {
+      return (
+        <div className={styles.root}>
+          <div className={styles.container}>
+            <h2 className={styles.stepTitle}>Protect Your Wallet</h2>
+            <p className={styles.stepDesc}>
+              Do you want to encrypt your private key with a password?
+            </p>
+
+            <div className={styles.securityCard}>
+              <div className={styles.securityOption} onClick={() => setPasswordStep('set')}>
+                <div className={styles.securityIconGood}><Lock size={22} /></div>
+                <div>
+                  <div className={styles.securityTitle}>Yes, use a password</div>
+                  <div className={styles.securityDesc}>
+                    Your private key is encrypted — even if malware reads localStorage, it cannot steal your funds without the password.
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.securityOption} onClick={() => setPasswordStep('skip')}>
+                <div className={styles.securityIconWarn}><ShieldOff size={22} /></div>
+                <div>
+                  <div className={styles.securityTitle}>Skip, store unencrypted</div>
+                  <div className={styles.securityDesc}>
+                    Your private key is stored in plaintext. Any malicious browser extension or XSS attack can read it directly from localStorage.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.actions}>
+              <Button variant="secondary" onClick={() => setMode('choose')}>Back</Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className={styles.root}>
         <div className={styles.container}>
@@ -136,19 +196,47 @@ export function SetupPage({ onWalletCreated }: SetupPageProps) {
 
           <Input label="Wallet Label" value={label} onChange={e => setLabel(e.target.value)} />
 
+          {passwordStep === 'set' && (
+            <div className={styles.passwordSection}>
+              <div className={styles.passwordHeader}><Lock size={14} /><span>Encrypt with password</span></div>
+              <Input
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="At least 8 characters"
+                suffix={
+                  <button className={styles.eyeBtn} onClick={() => setShowPassword(!showPassword)}>
+                    {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                }
+              />
+              <Input
+                label="Confirm Password"
+                type={showPassword ? 'text' : 'password'}
+                value={passwordConfirm}
+                onChange={e => setPasswordConfirm(e.target.value)}
+                placeholder="Repeat password"
+                error={error}
+              />
+            </div>
+          )}
+
+          {passwordStep === 'skip' && (
+            <div className={styles.skipWarning}>
+              <AlertTriangle size={14} />
+              <span>Your private key will be stored unencrypted in localStorage.</span>
+            </div>
+          )}
+
           <label className={styles.checkLabel}>
-            <input
-              type="checkbox"
-              checked={confirmed}
-              onChange={e => setConfirmed(e.target.checked)}
-              className={styles.checkbox}
-            />
+            <input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className={styles.checkbox} />
             <span>I have saved my private key in a safe place</span>
           </label>
 
           <div className={styles.actions}>
-            <Button variant="secondary" onClick={() => setMode('choose')}>Back</Button>
-            <Button onClick={handleCreate} disabled={!confirmed}>Open Wallet</Button>
+            <Button variant="secondary" onClick={() => setPasswordStep('ask')}>Back</Button>
+            <Button onClick={handleCreate} disabled={!confirmed || loading} loading={loading}>Open Wallet</Button>
           </div>
         </div>
       </div>
@@ -156,6 +244,43 @@ export function SetupPage({ onWalletCreated }: SetupPageProps) {
   }
 
   if (mode === 'import') {
+    if (passwordStep === 'ask') {
+      return (
+        <div className={styles.root}>
+          <div className={styles.container}>
+            <h2 className={styles.stepTitle}>Protect Your Wallet</h2>
+            <p className={styles.stepDesc}>Do you want to encrypt your private key with a password?</p>
+
+            <div className={styles.securityCard}>
+              <div className={styles.securityOption} onClick={() => setPasswordStep('set')}>
+                <div className={styles.securityIconGood}><Lock size={22} /></div>
+                <div>
+                  <div className={styles.securityTitle}>Yes, use a password</div>
+                  <div className={styles.securityDesc}>
+                    Your private key is encrypted — even if malware reads localStorage, it cannot steal your funds without the password.
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.securityOption} onClick={() => setPasswordStep('skip')}>
+                <div className={styles.securityIconWarn}><ShieldOff size={22} /></div>
+                <div>
+                  <div className={styles.securityTitle}>Skip, store unencrypted</div>
+                  <div className={styles.securityDesc}>
+                    Your private key is stored in plaintext. Any malicious browser extension or XSS attack can read it directly from localStorage.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.actions}>
+              <Button variant="secondary" onClick={() => setMode('choose')}>Back</Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className={styles.root}>
         <div className={styles.container}>
@@ -169,7 +294,7 @@ export function SetupPage({ onWalletCreated }: SetupPageProps) {
             onChange={e => setWif(e.target.value)}
             mono
             placeholder="5HueCGU8rMjxECyDialwujzDmLpRmw9..."
-            error={error}
+            error={passwordStep === 'skip' || passwordStep === 'set' ? error : ''}
             suffix={
               <button className={styles.eyeBtn} onClick={() => setShowKey(!showKey)}>
                 {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -179,9 +304,42 @@ export function SetupPage({ onWalletCreated }: SetupPageProps) {
 
           <Input label="Wallet Label" value={label} onChange={e => setLabel(e.target.value)} />
 
+          {passwordStep === 'set' && (
+            <div className={styles.passwordSection}>
+              <div className={styles.passwordHeader}><Lock size={14} /><span>Encrypt with password</span></div>
+              <Input
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="At least 8 characters"
+                suffix={
+                  <button className={styles.eyeBtn} onClick={() => setShowPassword(!showPassword)}>
+                    {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                }
+              />
+              <Input
+                label="Confirm Password"
+                type={showPassword ? 'text' : 'password'}
+                value={passwordConfirm}
+                onChange={e => setPasswordConfirm(e.target.value)}
+                placeholder="Repeat password"
+                error={error}
+              />
+            </div>
+          )}
+
+          {passwordStep === 'skip' && (
+            <div className={styles.skipWarning}>
+              <AlertTriangle size={14} />
+              <span>Your private key will be stored unencrypted in localStorage.</span>
+            </div>
+          )}
+
           <div className={styles.actions}>
-            <Button variant="secondary" onClick={() => setMode('choose')}>Back</Button>
-            <Button onClick={handleImport} disabled={!wif.trim()}>Import</Button>
+            <Button variant="secondary" onClick={() => setPasswordStep('ask')}>Back</Button>
+            <Button onClick={handleImport} disabled={!wif.trim() || loading} loading={loading}>Import</Button>
           </div>
         </div>
       </div>

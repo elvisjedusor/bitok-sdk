@@ -1,0 +1,145 @@
+.root {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: radial-gradient(ellipse at top, var(--color-primary-900) 0%, var(--color-neutral-950) 60%);
+}
+
+.container {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+}
+
+.lockIcon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background-color: var(--color-primary-900);
+  color: var(--color-primary-400);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.title {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--color-neutral-0);
+  letter-spacing: -0.03em;
+  text-align: center;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: var(--color-neutral-400);
+  text-align: center;
+  line-height: 1.6;
+  margin-top: -8px;
+}
+
+.walletLabel {
+  color: var(--color-neutral-200);
+  font-weight: 500;
+}
+
+.addressHint {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-neutral-600);
+  background-color: var(--color-neutral-900);
+  border: 1px solid var(--color-neutral-800);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  margin-top: -8px;
+}
+
+.eyeBtn {
+  background: none;
+  border: none;
+  color: var(--color-neutral-500);
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  cursor: pointer;
+}
+
+.eyeBtn:hover {
+  color: var(--color-neutral-300);
+}
+
+.forgetSection {
+  width: 100%;
+  text-align: center;
+  padding-top: 4px;
+}
+
+.forgetLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--color-neutral-600);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: color 150ms ease;
+}
+
+.forgetLink:hover {
+  color: var(--color-error-400);
+}
+
+.confirmRow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.confirmText {
+  font-size: 13px;
+  color: var(--color-neutral-400);
+}
+
+.confirmActions {
+  display: flex;
+  gap: 8px;
+}
+
+.confirmYes {
+  background: none;
+  border: 1px solid var(--color-error-600);
+  color: var(--color-error-400);
+  font-size: 13px;
+  padding: 6px 16px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.confirmYes:hover {
+  background-color: rgb(239 68 68 / 0.1);
+}
+
+.confirmNo {
+  background: none;
+  border: 1px solid var(--color-neutral-700);
+  color: var(--color-neutral-400);
+  font-size: 13px;
+  padding: 6px 16px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.confirmNo:hover {
+  background-color: var(--color-neutral-800);
+}

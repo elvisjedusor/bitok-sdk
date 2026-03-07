@@ -184,13 +184,42 @@
   border-color: var(--color-success-500);
 }
 
+.privKeySection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-neutral-800);
+}
+
 .privKeyRow {
   display: flex;
   justify-content: space-between;
   gap: 16px;
   align-items: flex-start;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--color-neutral-800);
+}
+
+.privKeyConfirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--color-neutral-850, var(--color-neutral-800));
+  border: 1px solid var(--color-neutral-700);
+  border-radius: var(--radius-md);
+  padding: 14px;
+}
+
+.privKeyConfirmHint {
+  font-size: 12px;
+  color: var(--color-neutral-400);
+  margin: 0;
+}
+
+.privKeyConfirmRow {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
 }
 
 .privKeyValue {

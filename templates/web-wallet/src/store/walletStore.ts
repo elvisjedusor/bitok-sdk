@@ -21,7 +21,17 @@ export function loadWallet(): StoredWallet | null {
   }
 }
 
+export function isLegacyWallet(wallet: StoredWallet): boolean {
+  return !wallet.encryptedWIF && !!wallet.wif;
+}
+
 export function saveWallet(wallet: StoredWallet): void {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { wif: _wif, ...persisted } = wallet;
+  localStorage.setItem(WALLET_KEY, JSON.stringify(persisted));
+}
+
+export function saveLegacyWallet(wallet: StoredWallet): void {
   localStorage.setItem(WALLET_KEY, JSON.stringify(wallet));
 }
 

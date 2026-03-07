@@ -18,9 +18,9 @@ export interface StoredWallet {
   address: string;
   publicKeyHex: string;
   encryptedWIF?: string;
-  wif?: string;
   label: string;
   createdAt: number;
+  wif?: string;
 }
 
 export interface RpcSettings {

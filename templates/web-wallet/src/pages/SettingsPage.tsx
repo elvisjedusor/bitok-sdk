@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { BitokRpc } from 'bitok';
-import { Server, Shield, Trash2, CheckCircle, XCircle, Eye, EyeOff, Code2, Copy, Check } from 'lucide-react';
+import { Server, Shield, Trash2, CircleCheck as CheckCircle, Circle as XCircle, Eye, EyeOff, Code as Code2, Copy, Check, KeyRound, Lock } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import type { StoredWallet, RpcSettings } from '../types/wallet';
+import { decryptWIF, encryptWIF } from '../utils/crypto';
+import { saveWallet } from '../store/walletStore';
 import styles from './SettingsPage.module.css';
 
 interface SettingsPageProps {
@@ -14,17 +16,19 @@ interface SettingsPageProps {
   onForgetWallet: () => void;
   devMode: boolean;
   onDevModeToggle: (enabled: boolean) => void;
+  onWalletUpdated: (wallet: StoredWallet) => void;
 }
 
 type TestState = 'idle' | 'testing' | 'ok' | 'fail';
 
-export function SettingsPage({ wallet, rpcSettings, onRpcUpdate, onForgetWallet, devMode, onDevModeToggle }: SettingsPageProps) {
+export function SettingsPage({ wallet, rpcSettings, onRpcUpdate, onForgetWallet, devMode, onDevModeToggle, onWalletUpdated }: SettingsPageProps) {
   const [rpc, setRpc] = useState<RpcSettings>({ ...rpcSettings });
   const [testState, setTestState] = useState<TestState>('idle');
   const [testError, setTestError] = useState('');
-  const [showPrivKey, setShowPrivKey] = useState(false);
   const [confirmForget, setConfirmForget] = useState(false);
   const [copiedField, setCopiedField] = useState('');
+
+  const isEncrypted = !!wallet.encryptedWIF;
 
   function handleRpcChange(field: keyof RpcSettings, value: string | number) {
     setRpc(prev => ({ ...prev, [field]: value }));
@@ -127,24 +131,20 @@ export function SettingsPage({ wallet, rpcSettings, onRpcUpdate, onForgetWallet,
           <InfoRow label="Address" value={wallet.address} mono copyable copiedField={copiedField} onCopy={setCopiedField} />
           <InfoRow label="Public Key" value={wallet.publicKeyHex} mono copyable copiedField={copiedField} onCopy={setCopiedField} />
           {wallet.wif && (
-            <div className={styles.privKeyRow}>
-              <span className={styles.infoLabel}>Private Key (WIF)</span>
-              <div className={styles.privKeyValue}>
-                <span className={styles.infoValueMono}>
-                  {showPrivKey ? wallet.wif : '\u2022'.repeat(52)}
-                </span>
-                <button className={styles.eyeBtn} onClick={() => setShowPrivKey(!showPrivKey)}>
-                  {showPrivKey ? <EyeOff size={13} /> : <Eye size={13} />}
-                </button>
-                {showPrivKey && wallet.wif && (
-                  <CopyButton value={wallet.wif} field="wif" copiedField={copiedField} onCopy={setCopiedField} />
-                )}
-              </div>
-            </div>
+            <PrivateKeyRow
+              wallet={wallet}
+              isEncrypted={isEncrypted}
+              copiedField={copiedField}
+              onCopy={setCopiedField}
+            />
           )}
           <InfoRow label="Created" value={new Date(wallet.createdAt).toLocaleString()} />
         </div>
       </Card>
+
+      {isEncrypted && (
+        <ChangePasswordCard wallet={wallet} onWalletUpdated={onWalletUpdated} />
+      )}
 
       <Card title="Developer Mode" subtitle="Access advanced scripting and contract tools" action={<Code2 size={18} className={styles.cardIcon} />}>
         <div className={styles.devModeSection}>
@@ -187,6 +187,182 @@ export function SettingsPage({ wallet, rpcSettings, onRpcUpdate, onForgetWallet,
         </div>
       </Card>
     </div>
+  );
+}
+
+function PrivateKeyRow({ wallet, isEncrypted, copiedField, onCopy }: {
+  wallet: StoredWallet;
+  isEncrypted: boolean;
+  copiedField: string;
+  onCopy: (f: string) => void;
+}) {
+  const [showPrivKey, setShowPrivKey] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [confirmError, setConfirmError] = useState('');
+  const [confirming, setConfirming] = useState(false);
+  const [askPassword, setAskPassword] = useState(false);
+
+  async function handleReveal() {
+    if (!isEncrypted) {
+      setShowPrivKey(true);
+      return;
+    }
+    setAskPassword(true);
+    setConfirmError('');
+    setConfirmPassword('');
+  }
+
+  async function handleConfirmPassword() {
+    if (!wallet.encryptedWIF) return;
+    setConfirming(true);
+    setConfirmError('');
+    try {
+      await decryptWIF(wallet.encryptedWIF, confirmPassword);
+      setShowPrivKey(true);
+      setAskPassword(false);
+      setConfirmPassword('');
+    } catch {
+      setConfirmError('Incorrect password');
+    } finally {
+      setConfirming(false);
+    }
+  }
+
+  function handleHide() {
+    setShowPrivKey(false);
+    setAskPassword(false);
+    setConfirmPassword('');
+    setConfirmError('');
+  }
+
+  return (
+    <div className={styles.privKeySection}>
+      <div className={styles.privKeyRow}>
+        <span className={styles.infoLabel}>Private Key (WIF)</span>
+        <div className={styles.privKeyValue}>
+          {showPrivKey ? (
+            <>
+              <span className={styles.infoValueMono}>{wallet.wif}</span>
+              {wallet.wif && (
+                <CopyButton value={wallet.wif} field="wif" copiedField={copiedField} onCopy={onCopy} />
+              )}
+              <button className={styles.eyeBtn} onClick={handleHide}>
+                <EyeOff size={13} />
+              </button>
+            </>
+          ) : (
+            <>
+              <span className={styles.infoValueMono}>{'\u2022'.repeat(52)}</span>
+              <button className={styles.eyeBtn} onClick={handleReveal}>
+                <Eye size={13} />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+      {askPassword && !showPrivKey && (
+        <div className={styles.privKeyConfirm}>
+          <p className={styles.privKeyConfirmHint}>Enter your wallet password to reveal the private key</p>
+          <div className={styles.privKeyConfirmRow}>
+            <Input
+              label=""
+              type="password"
+              placeholder="Wallet password"
+              value={confirmPassword}
+              onChange={e => { setConfirmPassword(e.target.value); setConfirmError(''); }}
+              onKeyDown={e => e.key === 'Enter' && handleConfirmPassword()}
+              error={confirmError}
+            />
+            <Button loading={confirming} onClick={handleConfirmPassword}>Reveal</Button>
+            <Button variant="secondary" onClick={() => { setAskPassword(false); setConfirmPassword(''); setConfirmError(''); }}>Cancel</Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ChangePasswordCard({ wallet, onWalletUpdated }: {
+  wallet: StoredWallet;
+  onWalletUpdated: (wallet: StoredWallet) => void;
+}) {
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  async function handleChangePassword() {
+    setError('');
+    setSuccess(false);
+
+    if (!newPassword) {
+      setError('New password cannot be empty');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setError('New passwords do not match');
+      return;
+    }
+    if (!wallet.encryptedWIF) return;
+
+    setSaving(true);
+    try {
+      const wif = await decryptWIF(wallet.encryptedWIF, currentPassword);
+      const newEncryptedWIF = await encryptWIF(wif, newPassword);
+      const updated: StoredWallet = { ...wallet, encryptedWIF: newEncryptedWIF, wif };
+      saveWallet(updated);
+      onWalletUpdated(updated);
+      setSuccess(true);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+    } catch {
+      setError('Current password is incorrect');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card title="Change Password" subtitle="Re-encrypt your wallet with a new password" action={<Lock size={18} />}>
+      <div className={styles.form}>
+        <Input
+          label="Current Password"
+          type="password"
+          placeholder="Enter current password"
+          value={currentPassword}
+          onChange={e => { setCurrentPassword(e.target.value); setError(''); setSuccess(false); }}
+        />
+        <Input
+          label="New Password"
+          type="password"
+          placeholder="Enter new password"
+          value={newPassword}
+          onChange={e => { setNewPassword(e.target.value); setError(''); setSuccess(false); }}
+        />
+        <Input
+          label="Confirm New Password"
+          type="password"
+          placeholder="Repeat new password"
+          value={confirmNewPassword}
+          onChange={e => { setConfirmNewPassword(e.target.value); setError(''); setSuccess(false); }}
+          onKeyDown={e => e.key === 'Enter' && handleChangePassword()}
+          error={error}
+        />
+        {success && (
+          <div className={styles.testResult + ' ' + styles.testOk}>
+            <CheckCircle size={14} /> Password changed successfully
+          </div>
+        )}
+        <div className={styles.actions}>
+          <Button icon={<KeyRound size={15} />} loading={saving} onClick={handleChangePassword}>
+            Change Password
+          </Button>
+        </div>
+      </div>
+    </Card>
   );
 }
 

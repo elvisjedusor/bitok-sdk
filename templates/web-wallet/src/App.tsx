@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { BitokRpc } from 'bitok';
 import { Layout } from './components/Layout';
 import { SetupPage } from './pages/SetupPage';
+import { UnlockPage } from './pages/UnlockPage';
+import { EncryptPromptModal } from './components/EncryptPromptModal';
 import { DashboardPage } from './pages/DashboardPage';
 import { SendPage } from './pages/SendPage';
 import { ReceivePage } from './pages/ReceivePage';
@@ -15,6 +17,8 @@ import type { WalletView, StoredWallet, RpcSettings } from './types/wallet';
 import {
   loadWallet,
   saveWallet,
+  saveLegacyWallet,
+  isLegacyWallet,
   removeWallet,
   loadRpcSettings,
   saveRpcSettings,
@@ -25,24 +29,49 @@ import {
 export default function App() {
   const [wallet, setWallet] = useState<StoredWallet | null>(loadWallet);
   const [rpcSettings, setRpcSettings] = useState<RpcSettings>(loadRpcSettings);
-  const [view, setView] = useState<WalletView>(wallet ? 'dashboard' : 'setup');
+  const [view, setView] = useState<WalletView>('dashboard');
   const [connected, setConnected] = useState(false);
   const [devMode, setDevMode] = useState(loadDevMode);
   const [pendingContractAction, setPendingContractAction] = useState<ContractAction | null>(null);
+  const [showEncryptPrompt, setShowEncryptPrompt] = useState(false);
+
+  const isLegacy = wallet ? isLegacyWallet(wallet) : false;
+  const unlocked = wallet?.wif != null;
+
+  useEffect(() => {
+    if (isLegacy && unlocked) {
+      setShowEncryptPrompt(true);
+    }
+  }, [isLegacy, unlocked]);
 
   const rpc = useMemo(() => {
     return new BitokRpc({ ...rpcSettings, timeout: 5000 });
   }, [rpcSettings]);
 
   useEffect(() => {
-    if (!wallet) return;
+    if (!unlocked) return;
     rpc.getInfo().then(() => setConnected(true)).catch(() => setConnected(false));
-  }, [rpc, wallet]);
+  }, [rpc, unlocked]);
 
   function handleWalletCreated(w: StoredWallet) {
-    saveWallet(w);
+    if (w.encryptedWIF) {
+      saveWallet(w);
+    } else {
+      saveLegacyWallet(w);
+    }
     setWallet(w);
     setView('dashboard');
+  }
+
+  function handleUnlocked(wif: string) {
+    setWallet(prev => prev ? { ...prev, wif } : prev);
+    setView('dashboard');
+  }
+
+  function handleEncrypted(updated: StoredWallet) {
+    saveWallet(updated);
+    setWallet({ ...updated, wif: wallet?.wif });
+    setShowEncryptPrompt(false);
   }
 
   function handleRpcUpdate(settings: RpcSettings) {
@@ -54,7 +83,7 @@ export default function App() {
   function handleForgetWallet() {
     removeWallet();
     setWallet(null);
-    setView('setup');
+    setView('dashboard');
     setConnected(false);
   }
 
@@ -70,64 +99,79 @@ export default function App() {
     return <SetupPage onWalletCreated={handleWalletCreated} />;
   }
 
+  if (!unlocked) {
+    return <UnlockPage wallet={wallet} onUnlocked={handleUnlocked} onForget={handleForgetWallet} />;
+  }
+
   return (
-    <Layout
-      activeView={view}
-      onNavigate={setView}
-      connected={connected}
-      address={wallet.address}
-      devMode={devMode}
-    >
-      {view === 'dashboard' && (
-        <DashboardPage
+    <>
+      <Layout
+        activeView={view}
+        onNavigate={setView}
+        connected={connected}
+        address={wallet.address}
+        devMode={devMode}
+      >
+        {view === 'dashboard' && (
+          <DashboardPage
+            wallet={wallet}
+            rpc={rpc}
+            onNavigate={(v) => setView(v)}
+          />
+        )}
+        {view === 'send' && (
+          <SendPage
+            wallet={wallet}
+            rpc={rpc}
+          />
+        )}
+        {view === 'receive' && (
+          <ReceivePage wallet={wallet} />
+        )}
+        {view === 'escrow' && (
+          <EscrowPage wallet={wallet} rpc={rpc} />
+        )}
+        {view === 'history' && (
+          <HistoryPage rpc={rpc} address={wallet.address} />
+        )}
+        {view === 'settings' && (
+          <SettingsPage
+            wallet={wallet}
+            rpcSettings={rpcSettings}
+            onRpcUpdate={handleRpcUpdate}
+            onForgetWallet={handleForgetWallet}
+            devMode={devMode}
+            onDevModeToggle={handleDevModeToggle}
+            onWalletUpdated={(updated) => setWallet(updated)}
+          />
+        )}
+        {view === 'contracts' && (
+          <ContractsPage
+            wallet={wallet}
+            rpc={rpc}
+            pendingAction={pendingContractAction}
+            onActionConsumed={() => setPendingContractAction(null)}
+          />
+        )}
+        {view === 'my-contracts' && (
+          <MyContractsPage
+            rpc={rpc}
+            address={wallet.address}
+            onNavigate={(v, action) => {
+              if (action) setPendingContractAction(action);
+              setView(v);
+            }}
+          />
+        )}
+      </Layout>
+
+      {showEncryptPrompt && wallet.wif && (
+        <EncryptPromptModal
           wallet={wallet}
-          rpc={rpc}
-          onNavigate={(v) => setView(v)}
+          onEncrypted={handleEncrypted}
+          onDismiss={() => setShowEncryptPrompt(false)}
         />
       )}
-      {view === 'send' && (
-        <SendPage
-          wallet={wallet}
-          rpc={rpc}
-        />
-      )}
-      {view === 'receive' && (
-        <ReceivePage wallet={wallet} />
-      )}
-      {view === 'escrow' && (
-        <EscrowPage wallet={wallet} rpc={rpc} />
-      )}
-      {view === 'history' && (
-        <HistoryPage rpc={rpc} address={wallet.address} />
-      )}
-      {view === 'settings' && (
-        <SettingsPage
-          wallet={wallet}
-          rpcSettings={rpcSettings}
-          onRpcUpdate={handleRpcUpdate}
-          onForgetWallet={handleForgetWallet}
-          devMode={devMode}
-          onDevModeToggle={handleDevModeToggle}
-        />
-      )}
-      {view === 'contracts' && (
-        <ContractsPage
-          wallet={wallet}
-          rpc={rpc}
-          pendingAction={pendingContractAction}
-          onActionConsumed={() => setPendingContractAction(null)}
-        />
-      )}
-      {view === 'my-contracts' && (
-        <MyContractsPage
-          rpc={rpc}
-          address={wallet.address}
-          onNavigate={(v, action) => {
-            if (action) setPendingContractAction(action);
-            setView(v);
-          }}
-        />
-      )}
-    </Layout>
+    </>
   );
 }
