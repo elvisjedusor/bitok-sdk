@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { BitokRpc } from 'bitok';
 import type { RawTransaction } from 'bitok';
 import { ArrowUpRight, ArrowDownLeft, Zap, RefreshCw, Clock } from 'lucide-react';
@@ -8,6 +8,7 @@ import type { TxHistoryItem } from '../types/wallet';
 import { clearConfirmedPending } from '../store/pendingTxStore';
 import type { PendingTx } from '../store/pendingTxStore';
 import { useMempool } from '../hooks/useMempool';
+import { cachedGetAddressTxids, cachedGetRawTransaction } from '../utils/cachedRpc';
 import styles from './HistoryPage.module.css';
 
 interface HistoryPageProps {
@@ -16,66 +17,71 @@ interface HistoryPageProps {
 }
 
 const PAGE_SIZE = 20;
-const POLL_INTERVAL_MS = 30_000;
+const POLL_INTERVAL_MS = 120_000;
 
 export function HistoryPage({ rpc, address }: HistoryPageProps) {
   const [txs, setTxs] = useState<TxHistoryItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [allTxids, setAllTxids] = useState<string[]>([]);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const fetchingRef = useRef(false);
 
   const mempool = useMempool(rpc, address);
 
-  async function fetchPage(txids: string[], walletAddr: string): Promise<TxHistoryItem[]> {
+  async function fetchPageItems(txids: string[], walletAddr: string): Promise<TxHistoryItem[]> {
     return Promise.all(txids.map(txid => resolveItemWithRpc(rpc, txid, walletAddr)));
   }
 
-  async function fetchTxids() {
-    setLoading(true);
+  const fetchTxids = useCallback(async (showSpinner: boolean) => {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
+    if (showSpinner) setRefreshing(true);
     setError(null);
     try {
-      const txids = await rpc.getAddressTxids(address);
+      const txids = await cachedGetAddressTxids(rpc, address);
       const sorted = [...txids].reverse();
       const confirmedSet = new Set(txids);
       clearConfirmedPending(address, confirmedSet);
       setAllTxids(sorted);
-      const items = await fetchPage(sorted.slice(0, PAGE_SIZE), address);
+      const items = await fetchPageItems(sorted.slice(0, PAGE_SIZE), address);
       items.sort((a, b) => b.time - a.time);
       setTxs(items);
       setPage(1);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load history');
     } finally {
-      setLoading(false);
+      fetchingRef.current = false;
+      setRefreshing(false);
     }
-  }
+  }, [rpc, address]);
 
   async function loadMore() {
     const start = page * PAGE_SIZE;
     const slice = allTxids.slice(start, start + PAGE_SIZE);
     if (!slice.length) return;
-    setLoading(true);
+    setLoadingMore(true);
     try {
-      const items = await fetchPage(slice, address);
+      const items = await fetchPageItems(slice, address);
       items.sort((a, b) => b.time - a.time);
       setTxs(prev => [...prev, ...items]);
       setPage(p => p + 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load more');
     } finally {
-      setLoading(false);
+      setLoadingMore(false);
     }
   }
 
   useEffect(() => {
-    fetchTxids();
-    const interval = setInterval(fetchTxids, POLL_INTERVAL_MS);
+    fetchTxids(txs.length === 0);
+    const interval = setInterval(() => fetchTxids(false), POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [address]);
+  }, [fetchTxids]);
 
   function handleRefresh() {
-    fetchTxids();
+    fetchTxids(true);
     mempool.refresh();
   }
 
@@ -88,7 +94,7 @@ export function HistoryPage({ rpc, address }: HistoryPageProps) {
           <h1 className={styles.pageTitle}>Transaction History</h1>
           <p className={styles.pageSubtitle}>Recent wallet activity from your node</p>
         </div>
-        <Button variant="ghost" size="sm" icon={<RefreshCw size={14} />} loading={loading || mempool.loading} onClick={handleRefresh}>
+        <Button variant="ghost" size="sm" icon={<RefreshCw size={14} />} loading={refreshing || mempool.loading} onClick={handleRefresh}>
           Refresh
         </Button>
       </div>
@@ -114,7 +120,7 @@ export function HistoryPage({ rpc, address }: HistoryPageProps) {
       )}
 
       <Card>
-        {loading && txs.length === 0 ? (
+        {refreshing && txs.length === 0 ? (
           <div className={styles.loading}>
             <div className={styles.spinner} />
             <span>Loading transactions...</span>
@@ -136,7 +142,7 @@ export function HistoryPage({ rpc, address }: HistoryPageProps) {
 
       {txs.length < allTxids.length && (
         <div className={styles.loadMore}>
-          <Button variant="secondary" loading={loading} onClick={loadMore}>
+          <Button variant="secondary" loading={loadingMore} onClick={loadMore}>
             Load More
           </Button>
         </div>
@@ -146,7 +152,7 @@ export function HistoryPage({ rpc, address }: HistoryPageProps) {
 }
 
 async function resolveItemWithRpc(rpc: BitokRpc, txid: string, walletAddress: string): Promise<TxHistoryItem> {
-  const raw = await rpc.getRawTransaction(txid, 1) as RawTransaction;
+  const raw = await cachedGetRawTransaction(rpc, txid, 1) as RawTransaction;
   const isCoinbase = raw.vin.some(v => v.coinbase !== undefined);
 
   if (isCoinbase) {
@@ -157,7 +163,7 @@ async function resolveItemWithRpc(rpc: BitokRpc, txid: string, walletAddress: st
   const prevTxs = await Promise.all(
     raw.vin
       .filter(v => v.txid)
-      .map(v => (rpc.getRawTransaction(v.txid!, 1) as Promise<RawTransaction>).catch(() => null))
+      .map(v => (cachedGetRawTransaction(rpc, v.txid!, 1) as Promise<RawTransaction>).catch(() => null))
   );
 
   const spendableVins = raw.vin.filter(v => v.txid);

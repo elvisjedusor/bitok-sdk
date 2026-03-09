@@ -210,8 +210,11 @@
 }
 
 .statIcon {
-  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-bottom: 2px;
+  color: var(--color-neutral-400);
 }
 
 .statValue {
@@ -265,8 +268,9 @@
     padding: 10px 6px;
   }
 
-  .statIcon {
-    font-size: 16px;
+  .statIcon svg {
+    width: 16px;
+    height: 16px;
   }
 
   .statValue {

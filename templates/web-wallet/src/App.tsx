@@ -32,7 +32,6 @@ export default function App() {
   const [view, setView] = useState<WalletView>('dashboard');
   const [connected, setConnected] = useState(false);
   const [devMode, setDevMode] = useState(loadDevMode);
-  const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0);
   const [pendingContractAction, setPendingContractAction] = useState<ContractAction | null>(null);
   const [showEncryptPrompt, setShowEncryptPrompt] = useState(false);
 
@@ -55,7 +54,6 @@ export default function App() {
   }, [rpc, unlocked]);
 
   function navigate(v: WalletView) {
-    if (v === 'dashboard') setDashboardRefreshKey(k => k + 1);
     setView(v);
   }
 
@@ -123,7 +121,6 @@ export default function App() {
             wallet={wallet}
             rpc={rpc}
             onNavigate={(v) => navigate(v)}
-            refreshKey={dashboardRefreshKey}
           />
         )}
         {view === 'send' && (
@@ -151,7 +148,7 @@ export default function App() {
             devMode={devMode}
             onDevModeToggle={handleDevModeToggle}
             onWalletUpdated={(updated) => setWallet(updated)}
-            onResyncComplete={() => setDashboardRefreshKey(k => k + 1)}
+            onResyncComplete={() => navigate('dashboard')}
           />
         )}
         {view === 'contracts' && (

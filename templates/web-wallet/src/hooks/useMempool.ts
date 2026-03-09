@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { BitokRpc, RawTransaction } from 'bitok';
 import { getPendingTxs } from '../store/pendingTxStore';
 import type { PendingTx } from '../store/pendingTxStore';
+import { cachedGetMempool, cachedGetRawTransaction } from '../utils/cachedRpc';
 
 interface MempoolTxInfo {
   txid: string;
@@ -20,11 +21,11 @@ export interface MempoolState {
   loading: boolean;
 }
 
-const MEMPOOL_POLL_MS = 15_000;
+const MEMPOOL_POLL_MS = 120_000;
 const BATCH_SIZE = 20;
 
 async function scanMempoolForAddress(rpc: BitokRpc, address: string): Promise<MempoolTxInfo[]> {
-  const mempoolTxids = await rpc.getMempool();
+  const mempoolTxids = await cachedGetMempool(rpc);
   if (mempoolTxids.length === 0) return [];
 
   const results: MempoolTxInfo[] = [];
@@ -33,7 +34,7 @@ async function scanMempoolForAddress(rpc: BitokRpc, address: string): Promise<Me
     const batch = mempoolTxids.slice(i, i + BATCH_SIZE);
     const txDetails = await Promise.all(
       batch.map(txid =>
-        rpc.getRawTransaction(txid, 1).catch(() => null)
+        cachedGetRawTransaction(rpc, txid, 1).catch(() => null)
       )
     );
 
@@ -53,7 +54,7 @@ async function scanMempoolForAddress(rpc: BitokRpc, address: string): Promise<Me
             .filter(v => v.txid)
             .map(async v => {
               try {
-                const prevTx = await rpc.getRawTransaction(v.txid!, 1) as RawTransaction;
+                const prevTx = await cachedGetRawTransaction(rpc, v.txid!, 1) as RawTransaction;
                 return prevTx.vout[v.vout ?? 0]?.address === address;
               } catch {
                 return false;
@@ -100,8 +101,12 @@ export function useMempool(rpc: BitokRpc, address: string) {
   });
   const mountedRef = useRef(true);
 
+  const hasDataRef = useRef(false);
+
   const scan = useCallback(async () => {
-    setState(prev => ({ ...prev, loading: true }));
+    if (!hasDataRef.current) {
+      setState(prev => ({ ...prev, loading: true }));
+    }
     try {
       const mempoolTxs = await scanMempoolForAddress(rpc, address);
       if (!mountedRef.current) return;
@@ -144,6 +149,7 @@ export function useMempool(rpc: BitokRpc, address: string) {
         .filter(t => t.isReceive)
         .reduce((sum: number, t) => sum + t.receivedAmount, 0);
 
+      hasDataRef.current = true;
       setState({
         mempoolTxs,
         pendingTxs: merged,

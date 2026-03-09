@@ -1,18 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { BitokRpc, satoshisToBitok } from 'bitok';
-import { ArrowUpRight, ArrowDownLeft, RefreshCw, Copy, Check, WifiOff, Clock } from 'lucide-react';
+import { ArrowUpRight, ArrowDownLeft, RefreshCw, Copy, Check, WifiOff, Clock, Blocks, Globe, Zap, CircleCheck as CheckCircle, Circle as XCircle, Circle } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import type { StoredWallet } from '../types/wallet';
 import { clearConfirmedPending } from '../store/pendingTxStore';
 import { useMempool } from '../hooks/useMempool';
+import { cachedGetInfo, cachedGetAddressBalance, cachedGetAddressTxids } from '../utils/cachedRpc';
 import styles from './DashboardPage.module.css';
 
 interface DashboardPageProps {
   wallet: StoredWallet;
   rpc: BitokRpc;
   onNavigate: (view: 'send' | 'receive') => void;
-  refreshKey?: number;
 }
 
 interface NodeInfo {
@@ -22,25 +22,28 @@ interface NodeInfo {
   difficulty: number;
 }
 
-const POLL_INTERVAL_MS = 30_000;
+const POLL_INTERVAL_MS = 120_000;
 
-export function DashboardPage({ wallet, rpc, onNavigate, refreshKey }: DashboardPageProps) {
+export function DashboardPage({ wallet, rpc, onNavigate }: DashboardPageProps) {
   const [info, setInfo] = useState<NodeInfo | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const fetchingRef = useRef(false);
 
   const mempool = useMempool(rpc, wallet.address);
 
-  async function fetchInfo() {
-    setLoading(true);
+  const fetchInfo = useCallback(async (showSpinner: boolean) => {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
+    if (showSpinner) setRefreshing(true);
     setError(null);
     try {
       const [nodeInfo, balanceSatoshis, txids] = await Promise.all([
-        rpc.getInfo(),
-        rpc.getAddressBalance(wallet.address),
-        rpc.getAddressTxids(wallet.address).catch(() => [] as string[]),
+        cachedGetInfo(rpc),
+        cachedGetAddressBalance(rpc, wallet.address),
+        cachedGetAddressTxids(rpc, wallet.address).catch(() => [] as string[]),
       ]);
       const confirmedSet = new Set(txids);
       clearConfirmedPending(wallet.address, confirmedSet);
@@ -54,18 +57,19 @@ export function DashboardPage({ wallet, rpc, onNavigate, refreshKey }: Dashboard
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to connect to node');
     } finally {
-      setLoading(false);
+      fetchingRef.current = false;
+      setRefreshing(false);
     }
-  }
+  }, [rpc, wallet.address]);
 
   useEffect(() => {
-    fetchInfo();
-    const interval = setInterval(fetchInfo, POLL_INTERVAL_MS);
+    fetchInfo(info === null);
+    const interval = setInterval(() => fetchInfo(false), POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [rpc, wallet.address, refreshKey]);
+  }, [fetchInfo]);
 
   function handleRefresh() {
-    fetchInfo();
+    fetchInfo(true);
     mempool.refresh();
   }
 
@@ -92,7 +96,7 @@ export function DashboardPage({ wallet, rpc, onNavigate, refreshKey }: Dashboard
           variant="ghost"
           size="sm"
           icon={<RefreshCw size={14} />}
-          loading={loading || mempool.loading}
+          loading={refreshing || mempool.loading}
           onClick={handleRefresh}
         >
           Refresh
@@ -188,23 +192,23 @@ export function DashboardPage({ wallet, rpc, onNavigate, refreshKey }: Dashboard
         <StatCard
           label="Block Height"
           value={info?.blocks?.toLocaleString() ?? '\u2014'}
-          icon="\u26d3"
+          icon={<Blocks size={20} />}
         />
         <StatCard
           label="Connections"
           value={info?.connections?.toString() ?? '\u2014'}
-          icon={info && info.connections > 0 ? '\ud83c\udf10' : '\u26aa'}
+          icon={info && info.connections > 0 ? <Globe size={20} /> : <Circle size={20} />}
           status={info && info.connections > 0 ? 'ok' : info !== null ? 'warn' : undefined}
         />
         <StatCard
           label="Difficulty"
           value={info ? formatDifficulty(info.difficulty) : '\u2014'}
-          icon="\u26a1"
+          icon={<Zap size={20} />}
         />
         <StatCard
           label="Node Status"
           value={info !== null ? 'Online' : error ? 'Offline' : '\u2014'}
-          icon={info !== null ? '\u2713' : '\u2717'}
+          icon={info !== null ? <CheckCircle size={20} /> : <XCircle size={20} />}
           status={info !== null ? 'ok' : error ? 'error' : undefined}
         />
       </div>
@@ -218,10 +222,10 @@ export function DashboardPage({ wallet, rpc, onNavigate, refreshKey }: Dashboard
   );
 }
 
-function StatCard({ label, value, icon, status }: { label: string; value: string; icon: string; status?: 'ok' | 'warn' | 'error' }) {
+function StatCard({ label, value, icon, status }: { label: string; value: string; icon: React.ReactNode; status?: 'ok' | 'warn' | 'error' }) {
   return (
     <div className={styles.statCard}>
-      <div className={styles.statIcon}>{icon}</div>
+      <div className={`${styles.statIcon} ${status ? styles[`status-${status}`] : ''}`}>{icon}</div>
       <div className={`${styles.statValue} ${status ? styles[`status-${status}`] : ''}`}>{value}</div>
       <div className={styles.statLabel}>{label}</div>
     </div>
