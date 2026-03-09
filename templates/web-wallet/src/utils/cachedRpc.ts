@@ -12,7 +12,7 @@ export async function cachedGetInfo(rpc: BitokRpc) {
 
 export async function cachedGetAddressBalance(rpc: BitokRpc, address: string) {
   const key = `getAddressBalance:${address}`;
-  const hit = getCached<number>(key, 'getAddressBalance');
+  const hit = getCached<bigint>(key, 'getAddressBalance');
   if (hit !== null) return hit;
   const result = await rpc.getAddressBalance(address);
   setCache(key, result);
@@ -28,7 +28,7 @@ export async function cachedGetAddressTxids(rpc: BitokRpc, address: string) {
   return result;
 }
 
-export async function cachedGetRawTransaction(rpc: BitokRpc, txid: string, verbose: number) {
+export async function cachedGetRawTransaction(rpc: BitokRpc, txid: string, verbose: 1) {
   const key = `getRawTransaction:${txid}:${verbose}`;
   const hit = getCached<RawTransaction>(key, 'getRawTransaction');
   if (hit) return hit;
