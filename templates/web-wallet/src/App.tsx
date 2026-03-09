@@ -144,12 +144,14 @@ export default function App() {
         {view === 'settings' && (
           <SettingsPage
             wallet={wallet}
+            rpc={rpc}
             rpcSettings={rpcSettings}
             onRpcUpdate={handleRpcUpdate}
             onForgetWallet={handleForgetWallet}
             devMode={devMode}
             onDevModeToggle={handleDevModeToggle}
             onWalletUpdated={(updated) => setWallet(updated)}
+            onResyncComplete={() => setDashboardRefreshKey(k => k + 1)}
           />
         )}
         {view === 'contracts' && (

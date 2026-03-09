@@ -5,8 +5,9 @@ import { ArrowUpRight, ArrowDownLeft, Zap, RefreshCw, Clock } from 'lucide-react
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import type { TxHistoryItem } from '../types/wallet';
-import { getPendingTxs, clearConfirmedPending } from '../store/pendingTxStore';
+import { clearConfirmedPending } from '../store/pendingTxStore';
 import type { PendingTx } from '../store/pendingTxStore';
+import { useMempool } from '../hooks/useMempool';
 import styles from './HistoryPage.module.css';
 
 interface HistoryPageProps {
@@ -15,6 +16,7 @@ interface HistoryPageProps {
 }
 
 const PAGE_SIZE = 20;
+const POLL_INTERVAL_MS = 30_000;
 
 export function HistoryPage({ rpc, address }: HistoryPageProps) {
   const [txs, setTxs] = useState<TxHistoryItem[]>([]);
@@ -22,7 +24,8 @@ export function HistoryPage({ rpc, address }: HistoryPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [allTxids, setAllTxids] = useState<string[]>([]);
-  const [pendingTxs, setPendingTxs] = useState<PendingTx[]>(() => getPendingTxs(address));
+
+  const mempool = useMempool(rpc, address);
 
   async function fetchPage(txids: string[], walletAddr: string): Promise<TxHistoryItem[]> {
     return Promise.all(txids.map(txid => resolveItemWithRpc(rpc, txid, walletAddr)));
@@ -36,7 +39,6 @@ export function HistoryPage({ rpc, address }: HistoryPageProps) {
       const sorted = [...txids].reverse();
       const confirmedSet = new Set(txids);
       clearConfirmedPending(address, confirmedSet);
-      setPendingTxs(getPendingTxs(address));
       setAllTxids(sorted);
       const items = await fetchPage(sorted.slice(0, PAGE_SIZE), address);
       items.sort((a, b) => b.time - a.time);
@@ -68,7 +70,16 @@ export function HistoryPage({ rpc, address }: HistoryPageProps) {
 
   useEffect(() => {
     fetchTxids();
+    const interval = setInterval(fetchTxids, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
   }, [address]);
+
+  function handleRefresh() {
+    fetchTxids();
+    mempool.refresh();
+  }
+
+  const pendingTxs = mempool.pendingTxs;
 
   return (
     <div className={styles.root}>
@@ -77,7 +88,7 @@ export function HistoryPage({ rpc, address }: HistoryPageProps) {
           <h1 className={styles.pageTitle}>Transaction History</h1>
           <p className={styles.pageSubtitle}>Recent wallet activity from your node</p>
         </div>
-        <Button variant="ghost" size="sm" icon={<RefreshCw size={14} />} loading={loading} onClick={fetchTxids}>
+        <Button variant="ghost" size="sm" icon={<RefreshCw size={14} />} loading={loading || mempool.loading} onClick={handleRefresh}>
           Refresh
         </Button>
       </div>
@@ -91,7 +102,7 @@ export function HistoryPage({ rpc, address }: HistoryPageProps) {
           <div className={styles.pendingSection}>
             <div className={styles.pendingSectionHeader}>
               <Clock size={13} />
-              <span>Unconfirmed — awaiting next block</span>
+              <span>Unconfirmed — in mempool</span>
             </div>
             <div className={styles.txList}>
               {pendingTxs.map(tx => (
@@ -110,7 +121,7 @@ export function HistoryPage({ rpc, address }: HistoryPageProps) {
           </div>
         ) : txs.length === 0 && pendingTxs.length === 0 ? (
           <div className={styles.empty}>
-            <div className={styles.emptyIcon}>📭</div>
+            <div className={styles.emptyIcon}>{'\ud83d\udced'}</div>
             <div className={styles.emptyTitle}>No transactions yet</div>
             <div className={styles.emptyDesc}>Transactions will appear here once your node is connected.</div>
           </div>
@@ -189,8 +200,8 @@ function TxRow({ tx }: { tx: TxHistoryItem }) {
           {tx.category === 'generate' ? 'Mined' : isReceive ? 'Received' : 'Sent'}
         </div>
         <div className={styles.txSub}>
-          <span className={styles.txid}>{tx.txid.slice(0, 16)}…</span>
-          <span>·</span>
+          <span className={styles.txid}>{tx.txid.slice(0, 16)}...</span>
+          <span>.</span>
           <span>{tx.confirmations} conf</span>
         </div>
       </div>
@@ -237,11 +248,11 @@ function PendingRow({ tx }: { tx: PendingTx }) {
       <div className={styles.txMain}>
         <div className={styles.txTitle}>
           {isReceive ? 'Receiving' : 'Sending'}
-          <span className={styles.pendingBadge}>Unconfirmed</span>
+          <span className={styles.pendingBadge}>In Mempool</span>
         </div>
         <div className={styles.txSub}>
-          <span className={styles.txid}>{tx.txid.slice(0, 16)}…</span>
-          <span>·</span>
+          <span className={styles.txid}>{tx.txid.slice(0, 16)}...</span>
+          <span>.</span>
           <span>0 conf</span>
         </div>
       </div>

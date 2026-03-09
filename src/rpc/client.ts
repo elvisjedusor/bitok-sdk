@@ -64,7 +64,13 @@ export class RpcClient {
       }
 
       if (json.error) {
-        throw new BitokRpcError(json.error.code, json.error.message);
+        if (typeof json.error === 'string') {
+          throw new BitokRpcError(-1, json.error);
+        }
+        throw new BitokRpcError(
+          json.error.code ?? -1,
+          json.error.message ?? String(json.error),
+        );
       }
 
       return json.result;
@@ -114,7 +120,15 @@ export class RpcClient {
       }
 
       return json.map((res) => {
-        if (res.error) throw new BitokRpcError(res.error.code, res.error.message);
+        if (res.error) {
+          if (typeof res.error === 'string') {
+            throw new BitokRpcError(-1, res.error);
+          }
+          throw new BitokRpcError(
+            res.error.code ?? -1,
+            res.error.message ?? String(res.error),
+          );
+        }
         return res.result;
       });
     } catch (err) {

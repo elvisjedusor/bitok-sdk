@@ -4,8 +4,8 @@ import { ArrowUpRight, ArrowDownLeft, RefreshCw, Copy, Check, WifiOff, Clock } f
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import type { StoredWallet } from '../types/wallet';
-import { getPendingTxs, clearConfirmedPending } from '../store/pendingTxStore';
-import type { PendingTx } from '../store/pendingTxStore';
+import { clearConfirmedPending } from '../store/pendingTxStore';
+import { useMempool } from '../hooks/useMempool';
 import styles from './DashboardPage.module.css';
 
 interface DashboardPageProps {
@@ -30,7 +30,8 @@ export function DashboardPage({ wallet, rpc, onNavigate, refreshKey }: Dashboard
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
-  const [pendingTxs, setPendingTxs] = useState<PendingTx[]>(() => getPendingTxs(wallet.address));
+
+  const mempool = useMempool(rpc, wallet.address);
 
   async function fetchInfo() {
     setLoading(true);
@@ -43,8 +44,6 @@ export function DashboardPage({ wallet, rpc, onNavigate, refreshKey }: Dashboard
       ]);
       const confirmedSet = new Set(txids);
       clearConfirmedPending(wallet.address, confirmedSet);
-      const remaining = getPendingTxs(wallet.address);
-      setPendingTxs(remaining);
       setInfo({
         balance: satoshisToBitok(balanceSatoshis),
         blocks: nodeInfo.blocks,
@@ -65,6 +64,11 @@ export function DashboardPage({ wallet, rpc, onNavigate, refreshKey }: Dashboard
     return () => clearInterval(interval);
   }, [rpc, wallet.address, refreshKey]);
 
+  function handleRefresh() {
+    fetchInfo();
+    mempool.refresh();
+  }
+
   function copyAddress() {
     navigator.clipboard.writeText(wallet.address).then(() => {
       setCopied(true);
@@ -73,6 +77,9 @@ export function DashboardPage({ wallet, rpc, onNavigate, refreshKey }: Dashboard
   }
 
   const shortAddress = `${wallet.address.slice(0, 10)}...${wallet.address.slice(-8)}`;
+  const confirmedBalance = info?.balance ?? 0;
+  const availableBalance = Math.max(0, confirmedBalance - mempool.outgoingTotal);
+  const hasUnconfirmed = mempool.pendingTxs.length > 0;
 
   return (
     <div className={styles.root}>
@@ -85,8 +92,8 @@ export function DashboardPage({ wallet, rpc, onNavigate, refreshKey }: Dashboard
           variant="ghost"
           size="sm"
           icon={<RefreshCw size={14} />}
-          loading={loading}
-          onClick={fetchInfo}
+          loading={loading || mempool.loading}
+          onClick={handleRefresh}
         >
           Refresh
         </Button>
@@ -104,22 +111,43 @@ export function DashboardPage({ wallet, rpc, onNavigate, refreshKey }: Dashboard
 
       <Card>
         <div className={styles.balanceCard}>
-          <div className={styles.balanceLabel}>Wallet Balance</div>
+          <div className={styles.balanceLabel}>
+            {hasUnconfirmed ? 'Available Balance' : 'Wallet Balance'}
+          </div>
           <div className={styles.balanceAmount}>
             {info !== null ? (
               <>
-                <span className={styles.balanceNumber}>{info.balance.toFixed(4)}</span>
+                <span className={styles.balanceNumber}>
+                  {hasUnconfirmed ? availableBalance.toFixed(4) : confirmedBalance.toFixed(4)}
+                </span>
                 <span className={styles.balanceCurrency}>BITOK</span>
               </>
             ) : (
               <span className={styles.balancePlaceholder}>—</span>
             )}
           </div>
-          {pendingTxs.length > 0 && (
+          {hasUnconfirmed && info !== null && (
+            <div className={styles.balanceBreakdown}>
+              <span className={styles.breakdownItem}>
+                Confirmed: {confirmedBalance.toFixed(4)}
+              </span>
+              {mempool.outgoingTotal > 0 && (
+                <span className={`${styles.breakdownItem} ${styles.breakdownPending}`}>
+                  Pending out: -{mempool.outgoingTotal.toFixed(4)}
+                </span>
+              )}
+              {mempool.incomingTotal > 0 && (
+                <span className={`${styles.breakdownItem} ${styles.breakdownIncoming}`}>
+                  Pending in: +{mempool.incomingTotal.toFixed(4)}
+                </span>
+              )}
+            </div>
+          )}
+          {mempool.pendingTxs.length > 0 && (
             <div className={styles.pendingList}>
-              {pendingTxs.map(tx => {
+              {mempool.pendingTxs.map(tx => {
                 const isSend = tx.category === 'send';
-                const sign = isSend ? '−' : '+';
+                const sign = isSend ? '\u2212' : '+';
                 return (
                   <div key={tx.txid} className={styles.pendingRow}>
                     <Clock size={11} className={styles.pendingIcon} />
@@ -159,24 +187,24 @@ export function DashboardPage({ wallet, rpc, onNavigate, refreshKey }: Dashboard
       <div className={styles.statsGrid}>
         <StatCard
           label="Block Height"
-          value={info?.blocks?.toLocaleString() ?? '—'}
-          icon="⛓"
+          value={info?.blocks?.toLocaleString() ?? '\u2014'}
+          icon="\u26d3"
         />
         <StatCard
           label="Connections"
-          value={info?.connections?.toString() ?? '—'}
-          icon={info && info.connections > 0 ? '🌐' : '⚪'}
+          value={info?.connections?.toString() ?? '\u2014'}
+          icon={info && info.connections > 0 ? '\ud83c\udf10' : '\u26aa'}
           status={info && info.connections > 0 ? 'ok' : info !== null ? 'warn' : undefined}
         />
         <StatCard
           label="Difficulty"
-          value={info ? formatDifficulty(info.difficulty) : '—'}
-          icon="⚡"
+          value={info ? formatDifficulty(info.difficulty) : '\u2014'}
+          icon="\u26a1"
         />
         <StatCard
           label="Node Status"
-          value={info !== null ? 'Online' : error ? 'Offline' : '—'}
-          icon={info !== null ? '✓' : '✗'}
+          value={info !== null ? 'Online' : error ? 'Offline' : '\u2014'}
+          icon={info !== null ? '\u2713' : '\u2717'}
           status={info !== null ? 'ok' : error ? 'error' : undefined}
         />
       </div>

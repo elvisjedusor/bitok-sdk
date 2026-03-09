@@ -1,27 +1,31 @@
-import { useState } from 'react';
-import { BitokRpc } from 'bitok';
-import { Server, Shield, Trash2, CircleCheck as CheckCircle, Circle as XCircle, Eye, EyeOff, Code as Code2, Copy, Check, KeyRound, Lock } from 'lucide-react';
+import { useState, useCallback, useRef } from 'react';
+import { BitokRpc, satoshisToBitok } from 'bitok';
+import type { RawTransaction } from 'bitok';
+import { Server, Shield, Trash2, CircleCheck as CheckCircle, Circle as XCircle, Eye, EyeOff, Code as Code2, Copy, Check, KeyRound, Lock, RefreshCw } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import type { StoredWallet, RpcSettings } from '../types/wallet';
 import { decryptWIF, encryptWIF } from '../utils/crypto';
 import { saveWallet } from '../store/walletStore';
+import { clearAllPendingForAddress } from '../store/pendingTxStore';
 import styles from './SettingsPage.module.css';
 
 interface SettingsPageProps {
   wallet: StoredWallet;
+  rpc: BitokRpc;
   rpcSettings: RpcSettings;
   onRpcUpdate: (settings: RpcSettings) => void;
   onForgetWallet: () => void;
   devMode: boolean;
   onDevModeToggle: (enabled: boolean) => void;
   onWalletUpdated: (wallet: StoredWallet) => void;
+  onResyncComplete: () => void;
 }
 
 type TestState = 'idle' | 'testing' | 'ok' | 'fail';
 
-export function SettingsPage({ wallet, rpcSettings, onRpcUpdate, onForgetWallet, devMode, onDevModeToggle, onWalletUpdated }: SettingsPageProps) {
+export function SettingsPage({ wallet, rpc: activeRpc, rpcSettings, onRpcUpdate, onForgetWallet, devMode, onDevModeToggle, onWalletUpdated, onResyncComplete }: SettingsPageProps) {
   const [rpc, setRpc] = useState<RpcSettings>({ ...rpcSettings });
   const [testState, setTestState] = useState<TestState>('idle');
   const [testError, setTestError] = useState('');
@@ -167,6 +171,8 @@ export function SettingsPage({ wallet, rpcSettings, onRpcUpdate, onForgetWallet,
         </div>
       </Card>
 
+      <ResyncCard rpc={activeRpc} address={wallet.address} onComplete={onResyncComplete} />
+
       <Card title="Danger Zone" subtitle="Irreversible wallet actions">
         <div className={styles.dangerSection}>
           <p className={styles.dangerText}>
@@ -188,6 +194,207 @@ export function SettingsPage({ wallet, rpcSettings, onRpcUpdate, onForgetWallet,
       </Card>
     </div>
   );
+}
+
+interface ResyncStep {
+  label: string;
+  status: 'pending' | 'running' | 'done' | 'error';
+  detail?: string;
+}
+
+function ResyncCard({ rpc, address, onComplete }: { rpc: BitokRpc; address: string; onComplete: () => void }) {
+  const [syncing, setSyncing] = useState(false);
+  const [steps, setSteps] = useState<ResyncStep[]>([]);
+  const [confirmResync, setConfirmResync] = useState(false);
+  const [finished, setFinished] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const cancelledRef = useRef(false);
+
+  const updateStep = useCallback((index: number, update: Partial<ResyncStep>) => {
+    setSteps(prev => prev.map((s, i) => i === index ? { ...s, ...update } : s));
+  }, []);
+
+  async function handleResync() {
+    cancelledRef.current = false;
+    setErrorMsg('');
+    setFinished(false);
+    setSyncing(true);
+    setConfirmResync(false);
+
+    const initialSteps: ResyncStep[] = [
+      { label: 'Clearing local transaction cache', status: 'pending' },
+      { label: 'Connecting to node', status: 'pending' },
+      { label: 'Fetching balance', status: 'pending' },
+      { label: 'Scanning transaction history', status: 'pending' },
+      { label: 'Resolving transaction details', status: 'pending' },
+      { label: 'Scanning mempool', status: 'pending' },
+    ];
+    setSteps(initialSteps);
+
+    try {
+      updateStep(0, { status: 'running' });
+      clearAllPendingForAddress(address);
+      await delay(300);
+      if (cancelledRef.current) return;
+      updateStep(0, { status: 'done', detail: 'Cleared' });
+
+      updateStep(1, { status: 'running' });
+      const info = await rpc.getInfo();
+      if (cancelledRef.current) return;
+      updateStep(1, { status: 'done', detail: `Block ${info.blocks.toLocaleString()}, ${info.connections} peer${info.connections !== 1 ? 's' : ''}` });
+
+      updateStep(2, { status: 'running' });
+      const balanceSat = await rpc.getAddressBalance(address);
+      if (cancelledRef.current) return;
+      const balance = satoshisToBitok(balanceSat);
+      updateStep(2, { status: 'done', detail: `${balance.toFixed(8)} BITOK` });
+
+      updateStep(3, { status: 'running' });
+      const txids = await rpc.getAddressTxids(address);
+      if (cancelledRef.current) return;
+      updateStep(3, { status: 'done', detail: `${txids.length} transaction${txids.length !== 1 ? 's' : ''} found` });
+
+      updateStep(4, { status: 'running' });
+      const batchSize = 10;
+      let resolved = 0;
+      for (let i = 0; i < txids.length; i += batchSize) {
+        if (cancelledRef.current) return;
+        const batch = txids.slice(i, i + batchSize);
+        await Promise.all(batch.map(txid => rpc.getRawTransaction(txid, 1).catch(() => null)));
+        resolved += batch.length;
+        updateStep(4, { status: 'running', detail: `${resolved} / ${txids.length}` });
+      }
+      if (cancelledRef.current) return;
+      updateStep(4, { status: 'done', detail: `${txids.length} resolved` });
+
+      updateStep(5, { status: 'running' });
+      const mempoolTxids = await rpc.getMempool();
+      if (cancelledRef.current) return;
+      let mempoolMatches = 0;
+      for (let i = 0; i < mempoolTxids.length; i += batchSize) {
+        if (cancelledRef.current) return;
+        const batch = mempoolTxids.slice(i, i + batchSize);
+        const txDetails = await Promise.all(
+          batch.map(txid => rpc.getRawTransaction(txid, 1).catch(() => null))
+        );
+        for (const rawTx of txDetails) {
+          if (!rawTx || typeof rawTx === 'string') continue;
+          const tx = rawTx as RawTransaction;
+          const touchesAddress = tx.vout.some(o => o.address === address);
+          if (touchesAddress) mempoolMatches++;
+          if (!touchesAddress) {
+            for (const vin of tx.vin) {
+              if (!vin.txid) continue;
+              try {
+                const prev = await rpc.getRawTransaction(vin.txid, 1) as RawTransaction;
+                if (prev.vout[vin.vout ?? 0]?.address === address) {
+                  mempoolMatches++;
+                  break;
+                }
+              } catch { /* skip */ }
+            }
+          }
+        }
+        updateStep(5, { status: 'running', detail: `Scanned ${Math.min(i + batchSize, mempoolTxids.length)} / ${mempoolTxids.length}` });
+      }
+      if (cancelledRef.current) return;
+      updateStep(5, { status: 'done', detail: mempoolMatches > 0 ? `${mempoolMatches} pending` : 'No pending transactions' });
+
+      setFinished(true);
+      onComplete();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Resync failed';
+      setErrorMsg(msg);
+      setSteps(prev => prev.map(s => s.status === 'running' ? { ...s, status: 'error', detail: msg } : s));
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  function handleCancel() {
+    cancelledRef.current = true;
+    setSyncing(false);
+    setSteps(prev => prev.map(s => s.status === 'running' ? { ...s, status: 'error', detail: 'Cancelled' } : s));
+  }
+
+  function handleReset() {
+    setSteps([]);
+    setFinished(false);
+    setErrorMsg('');
+    setConfirmResync(false);
+  }
+
+  return (
+    <Card title="Resync Wallet" subtitle="Re-scan your address from scratch" action={<RefreshCw size={18} className={styles.cardIcon} />}>
+      <div className={styles.resyncSection}>
+        {steps.length === 0 && !syncing && (
+          <>
+            <p className={styles.resyncDesc}>
+              Clears local transaction cache and re-scans your balance, transaction history, and mempool from the node.
+              Your password, keys, and settings are not affected.
+            </p>
+            {!confirmResync ? (
+              <Button variant="secondary" icon={<RefreshCw size={15} />} onClick={() => setConfirmResync(true)}>
+                Resync Wallet
+              </Button>
+            ) : (
+              <div className={styles.confirmRow}>
+                <span className={styles.resyncConfirmText}>This will clear cached data and re-scan. Continue?</span>
+                <Button onClick={handleResync}>Yes, Resync</Button>
+                <Button variant="secondary" onClick={() => setConfirmResync(false)}>Cancel</Button>
+              </div>
+            )}
+          </>
+        )}
+
+        {steps.length > 0 && (
+          <div className={styles.resyncSteps}>
+            {steps.map((step, i) => (
+              <div key={i} className={`${styles.resyncStep} ${styles[`resyncStep_${step.status}`]}`}>
+                <div className={styles.resyncStepIcon}>
+                  {step.status === 'pending' && <span className={styles.resyncDot} />}
+                  {step.status === 'running' && <span className={styles.resyncSpinner} />}
+                  {step.status === 'done' && <CheckCircle size={14} />}
+                  {step.status === 'error' && <XCircle size={14} />}
+                </div>
+                <div className={styles.resyncStepContent}>
+                  <span className={styles.resyncStepLabel}>{step.label}</span>
+                  {step.detail && <span className={styles.resyncStepDetail}>{step.detail}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {errorMsg && !syncing && (
+          <div className={styles.testResult + ' ' + styles.testFail}>
+            <XCircle size={14} /> {errorMsg}
+          </div>
+        )}
+
+        {finished && (
+          <div className={styles.testResult + ' ' + styles.testOk}>
+            <CheckCircle size={14} /> Resync complete
+          </div>
+        )}
+
+        {(syncing || finished || errorMsg) && (
+          <div className={styles.actions}>
+            {syncing && (
+              <Button variant="secondary" onClick={handleCancel}>Cancel</Button>
+            )}
+            {!syncing && (finished || errorMsg) && (
+              <Button variant="secondary" onClick={handleReset}>Done</Button>
+            )}
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function delay(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function PrivateKeyRow({ wallet, isEncrypted, copiedField, onCopy }: {

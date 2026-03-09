@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { Wallet as WalletClass, isValidAddress, bitokToSatoshis } from 'bitok';
-import { Send, CircleCheck as CheckCircle, Circle as XCircle, CircleAlert as AlertCircle, ArrowLeft } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Wallet as WalletClass, isValidAddress, bitokToSatoshis, satoshisToBitok } from 'bitok';
+import { Send, CircleCheck as CheckCircle, Circle as XCircle, CircleAlert as AlertCircle, ArrowLeft, Wallet } from 'lucide-react';
 import { addPendingTx } from '../store/pendingTxStore';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
@@ -8,6 +8,7 @@ import { Input } from '../components/Input';
 import type { StoredWallet } from '../types/wallet';
 import { BitokRpc } from 'bitok';
 import { useBroadcast } from '../hooks/useBroadcast';
+import { useMempool } from '../hooks/useMempool';
 import styles from './SendPage.module.css';
 
 interface SendPageProps {
@@ -31,18 +32,39 @@ export function SendPage({ wallet, rpc, initialScriptHex, onBack }: SendPageProp
   const [txid, setTxid] = useState('');
   const [errMsg, setErrMsg] = useState('');
   const [loading, setLoading] = useState(false);
+  const [confirmedBalance, setConfirmedBalance] = useState<number | null>(null);
 
   const broadcast = useBroadcast(wallet, rpc);
+  const mempool = useMempool(rpc, wallet.address);
+
+  useEffect(() => {
+    rpc.getAddressBalance(wallet.address)
+      .then(sat => setConfirmedBalance(satoshisToBitok(sat)))
+      .catch(() => {});
+  }, [rpc, wallet.address]);
+
+  const availableBalance = confirmedBalance !== null
+    ? Math.max(0, confirmedBalance - mempool.outgoingTotal)
+    : null;
 
   const addressError = mode === 'address' && toAddress && !isValidAddress(toAddress) ? 'Invalid Bitok address' : '';
   const scriptError = mode === 'script' && scriptHex && !/^[0-9a-fA-F]+$/.test(scriptHex.trim()) ? 'Invalid script hex' : '';
   const amountNum = parseFloat(amount);
   const feeNum = parseFloat(fee);
   const amountError = amount && (isNaN(amountNum) || amountNum <= 0) ? 'Enter a valid amount' : '';
+  const effectiveFee = isNaN(feeNum) ? parseFloat(DEFAULT_FEE) : feeNum;
+  const totalSend = (isNaN(amountNum) ? 0 : amountNum) + effectiveFee;
+  const exceedsBalance = availableBalance !== null && amount && !amountError && totalSend > availableBalance;
 
   const canSend = mode === 'address'
-    ? (toAddress && !addressError && amount && !amountError && wallet.wif)
-    : (scriptHex.trim() && !scriptError && amount && !amountError && wallet.wif);
+    ? (toAddress && !addressError && amount && !amountError && !exceedsBalance && wallet.wif)
+    : (scriptHex.trim() && !scriptError && amount && !amountError && !exceedsBalance && wallet.wif);
+
+  function handleMax() {
+    if (availableBalance === null) return;
+    const maxAmount = Math.max(0, availableBalance - effectiveFee);
+    setAmount(maxAmount > 0 ? maxAmount.toFixed(8) : '0');
+  }
 
   async function handleSend() {
     if (!wallet.wif || !canSend) return;
@@ -84,6 +106,10 @@ export function SendPage({ wallet, rpc, initialScriptHex, onBack }: SendPageProp
     setErrMsg('');
     setState('form');
     broadcast.reset();
+    rpc.getAddressBalance(wallet.address)
+      .then(sat => setConfirmedBalance(satoshisToBitok(sat)))
+      .catch(() => {});
+    mempool.refresh();
   }
 
   if (state === 'success') {
@@ -109,13 +135,32 @@ export function SendPage({ wallet, rpc, initialScriptHex, onBack }: SendPageProp
   }
 
   if (state === 'error') {
+    const isInputsSpent = /missing inputs/i.test(errMsg) || /inputs.*(spent|missing)/i.test(errMsg);
+    const isInsufficientFunds = /insufficient funds/i.test(errMsg);
+    const isRejected = /transaction rejected/i.test(errMsg);
+
+    let title = 'Transaction Failed';
+    let hint = '';
+    if (isInputsSpent) {
+      title = 'Inputs Already Spent';
+      hint = 'The coins you tried to spend are no longer available. This can happen if this address was used in another wallet or node. Your balance will update on the next refresh.';
+    } else if (isInsufficientFunds) {
+      title = 'Insufficient Funds';
+      hint = 'Your available balance is not enough to cover the amount plus the network fee.';
+    } else if (isRejected) {
+      hint = 'The network rejected this transaction. The inputs may have been spent from another wallet, or the fee may be too low.';
+    }
+
     return (
       <div className={styles.root}>
         <div className={styles.resultCard}>
           <XCircle size={48} className={styles.errorIcon} />
-          <h2 className={styles.resultTitle}>Transaction Failed</h2>
-          <p className={styles.resultDesc}>{errMsg}</p>
-          <Button onClick={reset} variant="secondary" fullWidth>Try Again</Button>
+          <h2 className={styles.resultTitle}>{title}</h2>
+          <p className={styles.resultDesc}>{hint || errMsg}</p>
+          {hint && errMsg && <p className={styles.resultDetail}>{errMsg}</p>}
+          <div className={styles.resultActions}>
+            <Button onClick={reset} variant="secondary" fullWidth>Try Again</Button>
+          </div>
         </div>
       </div>
     );
@@ -142,6 +187,20 @@ export function SendPage({ wallet, rpc, initialScriptHex, onBack }: SendPageProp
       {!wallet.wif && (
         <div className={styles.warnBanner}>
           Private key not available. Import your wallet to send transactions.
+        </div>
+      )}
+
+      {availableBalance !== null && (
+        <div className={styles.balanceBanner}>
+          <Wallet size={14} />
+          <span>
+            Available: <strong>{availableBalance.toFixed(8)} BITOK</strong>
+            {mempool.outgoingTotal > 0 && (
+              <span className={styles.balancePending}>
+                {' '}(pending out: -{mempool.outgoingTotal.toFixed(4)})
+              </span>
+            )}
+          </span>
         </div>
       )}
 
@@ -193,17 +252,24 @@ export function SendPage({ wallet, rpc, initialScriptHex, onBack }: SendPageProp
           )}
 
           <div className={styles.row}>
-            <Input
-              label="Amount"
-              value={amount}
-              onChange={e => setAmount(e.target.value)}
-              placeholder="0.00000000"
-              type="number"
-              min="0"
-              step="0.00000001"
-              error={amountError}
-              suffix={<span>BITOK</span>}
-            />
+            <div className={styles.amountField}>
+              <Input
+                label="Amount"
+                value={amount}
+                onChange={e => setAmount(e.target.value)}
+                placeholder="0.00000000"
+                type="number"
+                min="0"
+                step="0.00000001"
+                error={exceedsBalance ? `Exceeds available balance (${availableBalance?.toFixed(8)})` : amountError}
+                suffix={<span>BITOK</span>}
+              />
+              {availableBalance !== null && (
+                <button className={styles.maxBtn} onClick={handleMax} type="button">
+                  MAX
+                </button>
+              )}
+            </div>
             <Input
               label="Fee"
               value={fee}
@@ -225,12 +291,18 @@ export function SendPage({ wallet, rpc, initialScriptHex, onBack }: SendPageProp
               </div>
               <div className={styles.summaryRow}>
                 <span>Network Fee</span>
-                <span>{(isNaN(feeNum) ? parseFloat(DEFAULT_FEE) : feeNum).toFixed(8)} BITOK</span>
+                <span>{effectiveFee.toFixed(8)} BITOK</span>
               </div>
               <div className={`${styles.summaryRow} ${styles.summaryTotal}`}>
                 <span>Total</span>
-                <span>{(amountNum + (isNaN(feeNum) ? parseFloat(DEFAULT_FEE) : feeNum)).toFixed(8)} BITOK</span>
+                <span>{totalSend.toFixed(8)} BITOK</span>
               </div>
+              {availableBalance !== null && (
+                <div className={`${styles.summaryRow} ${styles.summaryRemaining}`}>
+                  <span>Remaining</span>
+                  <span>{Math.max(0, availableBalance - totalSend).toFixed(8)} BITOK</span>
+                </div>
+              )}
             </div>
           )}
 

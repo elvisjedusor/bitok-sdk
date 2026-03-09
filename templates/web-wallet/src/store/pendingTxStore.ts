@@ -40,3 +40,7 @@ export function clearConfirmedPending(address: string, confirmedTxids: Set<strin
   const remaining = load().filter(t => t.address !== address || !confirmedTxids.has(t.txid));
   save(remaining);
 }
+
+export function clearAllPendingForAddress(address: string): void {
+  save(load().filter(t => t.address !== address));
+}

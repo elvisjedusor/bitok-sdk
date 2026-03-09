@@ -90,6 +90,28 @@
   color: var(--color-neutral-700);
 }
 
+.balanceBreakdown {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+
+.breakdownItem {
+  color: var(--color-neutral-500);
+  font-variant-numeric: tabular-nums;
+}
+
+.breakdownPending {
+  color: var(--color-error-400);
+}
+
+.breakdownIncoming {
+  color: var(--color-success-500);
+}
+
 .pendingList {
   display: flex;
   flex-direction: column;

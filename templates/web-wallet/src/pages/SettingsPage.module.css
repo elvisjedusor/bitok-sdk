@@ -331,6 +331,129 @@
   transform: translateX(20px);
 }
 
+.resyncSection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.resyncDesc {
+  font-size: 14px;
+  color: var(--color-neutral-400);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.resyncConfirmText {
+  font-size: 14px;
+  color: var(--color-neutral-300);
+  font-weight: 500;
+}
+
+.resyncSteps {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.resyncStep {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  transition: background-color 200ms ease;
+}
+
+.resyncStep_pending {
+  opacity: 0.4;
+}
+
+.resyncStep_running {
+  background: rgb(59 130 246 / 0.06);
+}
+
+.resyncStep_done {
+  opacity: 1;
+}
+
+.resyncStep_error {
+  opacity: 1;
+}
+
+.resyncStepIcon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+}
+
+.resyncStep_done .resyncStepIcon {
+  color: var(--color-success-500);
+}
+
+.resyncStep_error .resyncStepIcon {
+  color: var(--color-error-500);
+}
+
+.resyncStep_running .resyncStepIcon {
+  color: rgb(59 130 246);
+}
+
+.resyncDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-neutral-600);
+}
+
+.resyncSpinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgb(59 130 246 / 0.25);
+  border-top-color: rgb(59 130 246);
+  border-radius: 50%;
+  animation: resyncSpin 0.7s linear infinite;
+}
+
+@keyframes resyncSpin {
+  to { transform: rotate(360deg); }
+}
+
+.resyncStepContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.resyncStepLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-neutral-200);
+}
+
+.resyncStep_pending .resyncStepLabel {
+  color: var(--color-neutral-500);
+}
+
+.resyncStepDetail {
+  font-size: 12px;
+  color: var(--color-neutral-500);
+  font-variant-numeric: tabular-nums;
+}
+
+.resyncStep_running .resyncStepDetail {
+  color: rgb(59 130 246 / 0.8);
+}
+
+.resyncStep_error .resyncStepDetail {
+  color: var(--color-error-400);
+}
+
 .dangerSection {
   display: flex;
   flex-direction: column;

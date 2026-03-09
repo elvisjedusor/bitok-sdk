@@ -16,7 +16,7 @@ export interface RpcRequest {
 
 export interface RpcResponse<T = unknown> {
   result: T;
-  error: RpcError | null;
+  error: RpcError | string | null;
   id: string | number | null;
 }
 
@@ -277,6 +277,15 @@ export interface RpcDecodedScriptSig {
   elements: RpcScriptSigElement[];
   pushCount: number;
   isPushOnly: boolean;
+}
+
+export interface MempoolTxInfo {
+  txid: string;
+  receivedAmount: number;
+  sentAmount: number;
+  isSend: boolean;
+  isReceive: boolean;
+  time: number;
 }
 
 export interface RpcVerifyScriptPairResult {

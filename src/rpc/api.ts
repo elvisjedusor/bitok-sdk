@@ -17,6 +17,7 @@ import {
   RpcVerifyScriptPairResult,
   IndexerInfo,
   AddressUtxo,
+  MempoolTxInfo,
 } from '../types/rpc';
 import { Block, BlockTemplate, MiningInfo } from '../types/block';
 import { NetworkInfo, PeerInfo } from '../types/network';
@@ -122,6 +123,74 @@ export class BitokRpc {
 
   async getMempool(): Promise<string[]> {
     return this.client.call<string[]>('getrawmempool');
+  }
+
+  async getAddressMempool(address: string): Promise<MempoolTxInfo[]> {
+    const mempoolTxids = await this.getMempool();
+    if (mempoolTxids.length === 0) return [];
+
+    const batchSize = 20;
+    const results: MempoolTxInfo[] = [];
+
+    for (let i = 0; i < mempoolTxids.length; i += batchSize) {
+      const batch = mempoolTxids.slice(i, i + batchSize);
+      const txDetails = await Promise.all(
+        batch.map(txid =>
+          this.getRawTransaction(txid, 1).catch(() => null)
+        )
+      );
+
+      for (const rawTx of txDetails) {
+        if (!rawTx || typeof rawTx === 'string') continue;
+        const tx = rawTx as RawTransaction;
+
+        const hasOutput = tx.vout.some(o => o.address === address);
+        const hasInput = tx.vin.some(v => v.txid !== undefined);
+
+        if (!hasOutput && !hasInput) continue;
+
+        let isSpender = false;
+        if (hasInput) {
+          const inputChecks = await Promise.all(
+            tx.vin
+              .filter(v => v.txid)
+              .map(async v => {
+                try {
+                  const prevTx = await this.getRawTransaction(v.txid!, 1) as RawTransaction;
+                  return prevTx.vout[v.vout ?? 0]?.address === address;
+                } catch {
+                  return false;
+                }
+              })
+          );
+          isSpender = inputChecks.some(Boolean);
+        }
+
+        if (!hasOutput && !isSpender) continue;
+
+        const receivedAmount = tx.vout
+          .filter(o => o.address === address)
+          .reduce((sum, o) => sum + o.value, 0);
+
+        let sentAmount = 0;
+        if (isSpender) {
+          sentAmount = tx.vout
+            .filter(o => o.address !== address)
+            .reduce((sum, o) => sum + o.value, 0);
+        }
+
+        results.push({
+          txid: tx.txid,
+          receivedAmount,
+          sentAmount,
+          isSend: isSpender,
+          isReceive: hasOutput && !isSpender,
+          time: Math.floor(Date.now() / 1000),
+        });
+      }
+    }
+
+    return results;
   }
 
   async getTxOutProof(txid: string, blockHash?: string): Promise<string> {
