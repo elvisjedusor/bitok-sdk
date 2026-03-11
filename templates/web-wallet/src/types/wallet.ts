@@ -3,7 +3,6 @@ export type WalletView =
   | 'dashboard'
   | 'send'
   | 'receive'
-  | 'escrow'
   | 'history'
   | 'settings'
   | 'contracts'

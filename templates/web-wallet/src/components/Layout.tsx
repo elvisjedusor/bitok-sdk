@@ -9,7 +9,6 @@ import {
   FileCode2,
   ScrollText,
   List,
-  Shield,
   X,
 } from 'lucide-react';
 import type { WalletView } from '../types/wallet';
@@ -28,7 +27,6 @@ const WALLET_NAV: { view: WalletView; icon: React.ReactNode; label: string }[] =
   { view: 'dashboard', icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
   { view: 'send', icon: <Send size={18} />, label: 'Send' },
   { view: 'receive', icon: <Download size={18} />, label: 'Receive' },
-  { view: 'escrow', icon: <Shield size={18} />, label: 'Escrow' },
   { view: 'history', icon: <History size={18} />, label: 'History' },
   { view: 'settings', icon: <Settings size={18} />, label: 'Settings' },
 ];

@@ -9,7 +9,6 @@ import { SendPage } from './pages/SendPage';
 import { ReceivePage } from './pages/ReceivePage';
 import { HistoryPage } from './pages/HistoryPage';
 import { SettingsPage } from './pages/SettingsPage';
-import { EscrowPage } from './pages/escrow/EscrowPage';
 import { ContractsPage } from './pages/contracts/ContractsPage';
 import { MyContractsPage } from './pages/contracts/MyContractsPage';
 import type { ContractAction } from './pages/contracts/MyContractsTab';
@@ -131,9 +130,6 @@ export default function App() {
         )}
         {view === 'receive' && (
           <ReceivePage wallet={wallet} />
-        )}
-        {view === 'escrow' && (
-          <EscrowPage wallet={wallet} rpc={rpc} />
         )}
         {view === 'history' && (
           <HistoryPage rpc={rpc} address={wallet.address} />
